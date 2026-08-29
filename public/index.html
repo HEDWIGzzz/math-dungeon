@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online - Masterpiece Edition</title>
+<title>Math Dungeon Online - Mobile Masterpiece</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -122,24 +122,22 @@ button { cursor: pointer; }
 .btn.primary { background: linear-gradient(135deg, #6d5dfc, #21a9d5); border: 0; box-shadow: 0 4px 15px rgba(109, 93, 252, 0.4); }
 .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-/* Mobile Touch D-Pad */
-.touch-dpad {
-    position: fixed; left: 20px; bottom: 140px; width: 140px; height: 140px;
-    pointer-events: auto; display: none; z-index: 15;
+/* Realistic Mobile Virtual Joystick */
+.touch-controller {
+    position: fixed; left: 30px; bottom: 130px; width: 130px; height: 130px;
+    background: rgba(255, 255, 255, 0.04); border: 2px solid rgba(101, 217, 255, 0.25);
+    border-radius: 50%; pointer-events: auto; display: none; z-index: 20;
+    backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,0.4);
 }
-.d-btn {
-    position: absolute; background: rgba(101, 217, 255, 0.15); border: 1px solid rgba(101, 217, 255, 0.4);
-    border-radius: 50%; width: 48px; height: 48px; display: grid; place-items: center;
-    font-size: 18px; color: var(--cyan); font-weight: bold; backdrop-filter: blur(4px);
+.joystick-thumb {
+    position: absolute; top: 30px; left: 30px; width: 70px; height: 70px;
+    background: radial-gradient(circle at 35% 35%, #65d9ff, #25b6d9);
+    border-radius: 50%; box-shadow: 0 5px 20px rgba(101, 217, 255, 0.6);
+    transition: transform 0.04s linear; pointer-events: none;
+    border: 2px solid rgba(255,255,255,0.4);
 }
-.d-btn:active { background: rgba(101, 217, 255, 0.4); transform: scale(0.95); }
-#btnUp { top: 0; left: 46px; }
-#btnDown { bottom: 0; left: 46px; }
-#btnLeft { top: 46px; left: 0; }
-#btnRight { top: 46px; right: 0; }
-
 @media (pointer: coarse) {
-    .touch-dpad { display: block; }
+    .touch-controller { display: block; }
     .help { display: none; }
 }
 
@@ -233,12 +231,9 @@ button { cursor: pointer; }
     <canvas id="game"></canvas>
     <div id="vignette"></div>
 
-    <!-- Mobile Virtual Touch D-Pad -->
-    <div class="touch-dpad">
-        <div class="d-btn" id="btnUp">▲</div>
-        <div class="d-btn" id="btnLeft">◀</div>
-        <div class="d-btn" id="btnRight">▶</div>
-        <div class="d-btn" id="btnDown">▼</div>
+    <!-- Realistic Mobile Virtual Joystick -->
+    <div class="touch-controller" id="touchController">
+        <div class="joystick-thumb" id="joystickThumb"></div>
     </div>
 
     <div class="hud">
@@ -293,7 +288,7 @@ button { cursor: pointer; }
         </div>
     </div>
 
-    <div class="help">WASD / Arrow Keys / Touch = เคลื่อนที่ · เดินชนแท่นเพื่อปลดล็อก · รหัสมาจากใบงานครู</div>
+    <div class="help">WASD / Arrow Keys / Touch Joystick = เคลื่อนที่ · เดินชนแท่นเพื่อปลดล็อก · รหัสมาจากใบงานครู</div>
     <div id="toast" class="toast"><b id="toastTitle"></b><span id="toastText"></span></div>
 
     <!-- Station Modal -->
@@ -355,7 +350,6 @@ button { cursor: pointer; }
         const socket = io();
         const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
         
-        // Create MiniMap canvas dynamically to ensure crisp rendering
         const mini = document.createElement('canvas');
         mini.className = 'mini';
         document.querySelector('.mini').replaceWith(mini);
@@ -364,7 +358,7 @@ button { cursor: pointer; }
         let W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1;
         let world = { width: 4000, height: 4000 };
         let stations = [], tiles = [], players = {};
-        let renderPlayers = {}; // Smooth Interpolation Map
+        let renderPlayers = {};
         let me = null, myId = null, started = false, currentStation = null;
         let inventory = [], equation = [];
         const keys = { w: false, a: false, s: false, d: false };
@@ -372,7 +366,11 @@ button { cursor: pointer; }
         const floatingTexts = [];
         const camera = { x: 0, y: 0 };
 
-        // Web Audio API Sound Generator (No external files required)
+        // Joystick State
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+
+        // Web Audio API Sound Generator
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             if (!audioCtx) return;
@@ -437,6 +435,7 @@ button { cursor: pointer; }
             started = true;
         }
 
+        // Keyboard Handlers
         function setKey(k, v) {
             k = k.toLowerCase();
             if (k === 'w' || k === 'arrowup') keys.w = v;
@@ -455,17 +454,47 @@ button { cursor: pointer; }
         });
         addEventListener('keyup', e => setKey(e.key, false));
 
-        // Mobile Touch D-Pad Handlers
-        function setupTouchButton(id, keyName) {
-            const btn = document.getElementById(id);
-            if (!btn) return;
-            ['touchstart', 'mousedown'].forEach(ev => btn.addEventListener(ev, e => { e.preventDefault(); keys[keyName] = true; }));
-            ['touchend', 'mouseup', 'mouseleave'].forEach(ev => btn.addEventListener(ev, e => { e.preventDefault(); keys[keyName] = false; }));
+        // Realistic Virtual Joystick Handlers
+        const joyZone = document.getElementById('touchController');
+        const joyThumb = document.getElementById('joystickThumb');
+        const maxRadius = 35;
+
+        joyZone.addEventListener('touchstart', handleJoyStart, {passive: false});
+        joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
+        joyZone.addEventListener('touchend', handleJoyEnd, {passive: false});
+
+        function handleJoyStart(e) {
+            e.preventDefault();
+            joystickActive = true;
+            updateJoystick(e.touches[0]);
         }
-        setupTouchButton('btnUp', 'w');
-        setupTouchButton('btnDown', 's');
-        setupTouchButton('btnLeft', 'a');
-        setupTouchButton('btnRight', 'd');
+        function handleJoyMove(e) {
+            e.preventDefault();
+            if (joystickActive) updateJoystick(e.touches[0]);
+        }
+        function handleJoyEnd(e) {
+            e.preventDefault();
+            joystickActive = false;
+            joystickVector = { x: 0, y: 0 };
+            joyThumb.style.transform = `translate(0px, 0px)`;
+        }
+        function updateJoystick(touch) {
+            const rect = joyZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            let distance = Math.hypot(dx, dy);
+
+            if (distance > maxRadius) {
+                dx = (dx / distance) * maxRadius;
+                dy = (dy / distance) * maxRadius;
+            }
+
+            joyThumb.style.transform = `translate(${dx}px, ${dy}px)`;
+            joystickVector.x = dx / maxRadius;
+            joystickVector.y = dy / maxRadius;
+        }
 
         // Socket Listeners
         socket.on('initGame', d => {
@@ -915,10 +944,20 @@ button { cursor: pointer; }
 
         function update() {
             if (started && me) {
-                let dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                if (dx || dy) {
-                    const l = Math.hypot(dx, dy);
-                    dx /= l; dy /= l;
+                let dx = 0, dy = 0;
+                if (joystickActive) {
+                    dx = joystickVector.x;
+                    dy = joystickVector.y;
+                } else {
+                    dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+                    dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+                    if (dx || dy) {
+                        const l = Math.hypot(dx, dy);
+                        dx /= l; dy /= l;
+                    }
+                }
+
+                if (dx !== 0 || dy !== 0) {
                     socket.emit('move', { x: me.x + dx * 7, y: me.y + dy * 7, isMoving: true });
                 } else {
                     socket.emit('move', { x: me.x, y: me.y, isMoving: false });
