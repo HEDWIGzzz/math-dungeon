@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Optimized Edition</title>
+<title>Math Dungeon Online — Custom Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -102,7 +102,16 @@ button { cursor: pointer; }
 .btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; }
 .btn:hover { filter: brightness(1.15); }
 
-.touch-controller { position: fixed; left: 24px; bottom: 120px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2); border-radius: 50%; pointer-events: auto; display: none; z-index: 20; backdrop-filter: blur(6px); }
+/* Virtual Joystick - ซ่อนอัตโนมัติเมื่อไม่ได้สัมผัสเดิน */
+.touch-controller {
+    position: fixed; left: 24px; bottom: 120px; width: 120px; height: 120px;
+    background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2);
+    border-radius: 50%; pointer-events: auto; display: none; z-index: 20;
+    backdrop-filter: blur(6px); opacity: 0; transition: opacity 0.3s ease;
+}
+.touch-controller.active {
+    opacity: 1;
+}
 .joystick-thumb { position: absolute; top: 28px; left: 28px; width: 64px; height: 64px; background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
 @media (pointer: coarse) { .touch-controller { display: block; } .help { display: none; } }
 
@@ -221,7 +230,6 @@ button { cursor: pointer; }
         </div>
     </div>
 
-    <!-- Name & Customization Modal -->
     <div id="nameModal" class="modal show">
         <div class="modalbox">
             <div class="seal">🏰</div>
@@ -427,9 +435,23 @@ button { cursor: pointer; }
         joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
         joyZone.addEventListener('touchend', handleJoyEnd, {passive: false});
 
-        function handleJoyStart(e) { e.preventDefault(); joystickActive = true; updateJoystick(e.touches[0]); }
-        function handleJoyMove(e) { e.preventDefault(); if (joystickActive) updateJoystick(e.touches[0]); }
-        function handleJoyEnd(e) { e.preventDefault(); joystickActive = false; joystickVector = { x: 0, y: 0 }; joyThumb.style.transform = `translate(0px, 0px)`; }
+        function handleJoyStart(e) {
+            e.preventDefault();
+            joystickActive = true;
+            document.getElementById('touchController').classList.add('active'); // แสดงจอยสติกเมื่อเริ่มกด
+            updateJoystick(e.touches[0]);
+        }
+        function handleJoyMove(e) {
+            e.preventDefault();
+            if (joystickActive) updateJoystick(e.touches[0]);
+        }
+        function handleJoyEnd(e) {
+            e.preventDefault();
+            joystickActive = false;
+            joystickVector = { x: 0, y: 0 };
+            joyThumb.style.transform = `translate(0px, 0px)`;
+            document.getElementById('touchController').classList.remove('active'); // ซ่อนจอยสติกเมื่อปล่อยมือ
+        }
         function updateJoystick(touch) {
             const rect = joyZone.getBoundingClientRect();
             let dx = touch.clientX - (rect.left + rect.width / 2);
@@ -799,7 +821,6 @@ button { cursor: pointer; }
 
         function drawPlayer(p, isMe) {
             ctx.save();
-            // ปัดเศษพิกัดด้วย Math.round ป้องกันอาการภาพสั่น
             ctx.translate(Math.round(p.x), Math.round(p.y));
             const bob = p.isMoving ? Math.sin(Date.now() / 80) * 2 : 0;
             ctx.translate(0, bob);
