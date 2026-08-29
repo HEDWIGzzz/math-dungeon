@@ -32,7 +32,59 @@ const stations = [
 const world = { width: 4000, height: 4000 };
 const players = new Map();
 let nextTileId = 1;
+// เก็บความลับของฐานทั้ง 5 (รหัสผ่านตั้งต้น)
+let stationCodes = {
+    1: '1234',
+    2: '5678',
+    3: '9999',
+    4: '0000',
+    5: 'math'
+};
 
+const path = require('path');
+
+// สมมติว่าคุณมี app = express() อยู่แล้ว
+app.use(express.static(path.join(__dirname, 'public')));
+
+// เมื่อพิมพ์ /admin ให้เปิดไฟล์ admin.html
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+// --- สำหรับหน้า Admin ---
+    // ส่งรหัสผ่านปัจจุบันไปให้หน้า Admin แสดงผล
+    socket.on('requestAdminCodes', () => {
+        socket.emit('currentAdminCodes', stationCodes);
+    });
+
+    // รับรหัสผ่านใหม่จากหน้า Admin มาอัปเดตบนเซิร์ฟเวอร์
+    socket.on('updateAdminCodes', (newCodes) => {
+        stationCodes = newCodes;
+        console.log('Admin updated station codes:', stationCodes);
+    });
+
+    // --- สำหรับผู้เล่น (ตรวจสอบรหัสตอนเปิดฐาน) ---
+    // โค้ดส่วนนี้จะทำงานเมื่อผู้เล่นกรอกรหัสในหน้าจอเกม
+    socket.on('submitStationCode', (data) => {
+        const { stationId, code } = data;
+        const player = players[socket.id];
+        if (!player) return;
+
+        // ตรวจสอบว่ารหัสผ่านตรงกับที่ครูตั้งไว้ในหน้า /admin หรือไม่
+        if (code === stationCodes[stationId]) {
+            player.completed = stationId; // อัปเดตความคืบหน้า
+            player.score += 100; // ให้คะแนน
+            
+            // ส่งผลลัพธ์ว่า "สำเร็จ" กลับไปให้หน้าจอเกม
+            socket.emit('stationResult', { success: true, reward: 100 });
+            
+            // อัปเดตสถานะให้ผู้เล่นทุกคนเห็น
+            io.emit('stateUpdate', players);
+            updateLeaderboard();
+        } else {
+            // ส่งผลลัพธ์ว่า "ไม่สำเร็จ" กลับไป
+            socket.emit('stationResult', { success: false, msg: 'รหัสผ่านไม่ถูกต้อง ลองตรวจสอบใบงานอีกครั้ง' });
+        }
+    });
 // ระบบบันทึกข้อมูลผู้เล่น (เก็บนาน 3 วัน = 3 * 24 * 60 * 60 * 1000 มิลลิวินาที)
 const SAVE_FILE = path.join(__dirname, 'player_saves.json');
 let savedPlayers = {};
