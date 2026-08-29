@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Custom Edition</title>
+<title>Math Dungeon Online — Smooth Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -323,6 +323,7 @@ button { cursor: pointer; }
         let joystickVector = { x: 0, y: 0 };
         let questOpen = true;
         let modalCooldown = 0;
+        let lastSendTime = 0;
 
         let cachedWorldGradient = null;
         function updateWorldGradient() {
@@ -438,7 +439,7 @@ button { cursor: pointer; }
         function handleJoyStart(e) {
             e.preventDefault();
             joystickActive = true;
-            document.getElementById('touchController').classList.add('active'); // แสดงจอยสติกเมื่อเริ่มกด
+            document.getElementById('touchController').classList.add('active');
             updateJoystick(e.touches[0]);
         }
         function handleJoyMove(e) {
@@ -450,7 +451,7 @@ button { cursor: pointer; }
             joystickActive = false;
             joystickVector = { x: 0, y: 0 };
             joyThumb.style.transform = `translate(0px, 0px)`;
-            document.getElementById('touchController').classList.remove('active'); // ซ่อนจอยสติกเมื่อปล่อยมือ
+            document.getElementById('touchController').classList.remove('active');
         }
         function updateJoystick(touch) {
             const rect = joyZone.getBoundingClientRect();
@@ -882,21 +883,34 @@ button { cursor: pointer; }
         function update() {
             if (started && me) {
                 let dx = 0, dy = 0;
-                if (joystickActive) { dx = joystickVector.x; dy = joystickVector.y; }
-                else {
+                if (joystickActive) {
+                    dx = joystickVector.x;
+                    dy = joystickVector.y;
+                } else {
                     dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
                     dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                    if (dx || dy) { const l = Math.hypot(dx, dy); dx /= l; dy /= l; }
+                    if (dx || dy) {
+                        const l = Math.hypot(dx, dy);
+                        dx /= l; dy /= l;
+                    }
                 }
+
                 if (dx !== 0 || dy !== 0) {
                     const speed = 6.5;
                     me.x = Math.max(80, Math.min(world.width - 80, me.x + dx * speed));
                     me.y = Math.max(80, Math.min(world.height - 80, me.y + dy * speed));
                     me.isMoving = true;
-                    socket.emit('move', { x: me.x, y: me.y, isMoving: true });
+                    
+                    const now = Date.now();
+                    if (now - lastSendTime > 40) {
+                        socket.emit('move', { x: me.x, y: me.y, isMoving: true });
+                        lastSendTime = now;
+                    }
                 } else {
-                    me.isMoving = false;
-                    socket.emit('move', { x: me.x, y: me.y, isMoving: false });
+                    if (me.isMoving) {
+                        me.isMoving = false;
+                        socket.emit('move', { x: me.x, y: me.y, isMoving: false });
+                    }
                 }
             }
             
