@@ -1,2 +1,216 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Math Dungeon — Teacher Control</title><style>@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap');*{box-sizing:border-box}body{margin:0;background:#070914;color:#fff;font-family:Kanit,sans-serif;padding:30px}.wrap{max-width:900px;margin:auto}.card{background:#11182b;border:1px solid #ffffff18;border-radius:20px;padding:22px;margin-top:16px}h1{margin:0}p{color:#94a0b8}.row{display:grid;grid-template-columns:70px 1fr 220px 100px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #ffffff0d}.row input{width:100%;padding:10px;border-radius:10px;border:1px solid #34405a;background:#080c18;color:#fff}.btn{padding:10px 14px;border:0;border-radius:10px;background:#6d5dfc;color:#fff;font-weight:700;cursor:pointer}.key{width:100%;padding:12px;border-radius:10px;border:1px solid #34405a;background:#080c18;color:#fff}.msg{margin-top:10px;color:#34d399}@media(max-width:700px){.row{grid-template-columns:45px 1fr}.row input,.row button{grid-column:1/-1}}</style></head><body><div class="wrap"><h1>🧙‍♂️ Math Dungeon — Teacher Control</h1><p>ตั้งรหัสผ่านของแต่ละฐานสำหรับนักเรียน รหัสจะถูกเก็บและตรวจสอบที่ Server</p><div class="card"><label>Admin Key</label><input id="key" class="key" placeholder="ใส่ ADMIN_KEY ของเซิร์ฟเวอร์"><button class="btn" style="margin-top:10px" onclick="load()">โหลดฐาน</button><div id="rows"></div><div id="msg" class="msg"></div></div></div><script>async function load(){const key=document.getElementById('key').value;const r=await fetch('/api/admin/stations?key='+encodeURIComponent(key));if(!r.ok)return msg('รหัส Admin ไม่ถูกต้อง');const data=await r.json();document.getElementById('rows').innerHTML=data.map(s=>`<div class="row"><b>#${s.id}</b><span>${s.name}</span><input id="c${s.id}" value="${esc(s.code)}"><button class="btn" onclick="save(${s.id})">บันทึก</button></div>`).join('');msg('โหลดสำเร็จ')}async function save(id){const key=document.getElementById('key').value;const code=document.getElementById('c'+id).value;const r=await fetch('/api/admin/stations?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,code})});msg(r.ok?'บันทึกรหัสฐาน #'+id+' แล้ว':'บันทึกไม่สำเร็จ')}function msg(x){document.getElementById('msg').textContent=x}function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</script></body></html>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Math Dungeon — Teacher Control Panel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
 
+:root {
+    --bg: #070914;
+    --panel: rgba(17, 24, 43, 0.9);
+    --line: rgba(255, 255, 255, 0.12);
+    --cyan: #65d9ff;
+    --purple: #a78bfa;
+    --gold: #f7c948;
+    --green: #34d399;
+    --red: #fb7185;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0; min-height: 100vh; background: var(--bg);
+    color: #fff; font-family: 'Kanit', sans-serif; padding: 25px;
+    background-image: radial-gradient(circle at 50% 0%, #161d36 0%, var(--bg) 70%);
+}
+
+.wrap { max-width: 850px; margin: auto; }
+.header-box { text-align: center; margin-bottom: 25px; }
+.header-box h1 { margin: 0 0 5px; font-size: 28px; color: var(--gold); text-shadow: 0 0 20px rgba(247, 201, 72, 0.3); }
+.header-box p { color: #94a0b8; margin: 0; font-size: 14px; }
+
+.card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 20px; padding: 24px; box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px); margin-bottom: 20px;
+}
+
+label { display: block; font-size: 13px; color: var(--cyan); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
+.key-row { display: flex; gap: 10px; margin-bottom: 20px; }
+.key {
+    flex: 1; padding: 12px 16px; border-radius: 12px; border: 1px solid #34405a;
+    background: #080c18; color: #fff; font-size: 16px; outline: none; font-family: 'Kanit';
+}
+.key:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(101, 217, 255, 0.2); }
+
+.btn {
+    padding: 10px 20px; border: 0; border-radius: 12px;
+    background: linear-gradient(135deg, #6d5dfc, #21a9d5);
+    color: #fff; font-weight: 700; cursor: pointer; transition: 0.2s;
+    box-shadow: 0 4px 15px rgba(109, 93, 252, 0.3); font-family: 'Kanit';
+}
+.btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+.btn-rand { background: #202a40; border: 1px solid var(--line); color: var(--cyan); }
+.btn-rand:hover { background: #2b3856; }
+
+.stations-list { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+.station-row {
+    background: #0d1324; border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px; padding: 16px; display: flex; align-items: center;
+    gap: 15px; transition: 0.2s;
+}
+.station-row:hover { border-color: rgba(101, 217, 255, 0.3); }
+
+.station-badge {
+    width: 44px; height: 44px; border-radius: 12px; background: #18223c;
+    display: grid; place-items: center; font-weight: 700; font-size: 18px; color: var(--gold);
+    border: 1px solid rgba(247, 201, 72, 0.3); flex-shrink: 0;
+}
+.station-info { flex: 1; min-width: 0; }
+.station-info b { font-size: 16px; display: block; }
+.station-info small { color: #8490aa; font-size: 12px; }
+
+.station-actions { display: flex; gap: 8px; align-items: center; }
+.station-actions input {
+    width: 150px; padding: 9px 12px; border-radius: 10px; border: 1px solid #34405a;
+    background: #080c18; color: #fff; font-weight: 600; text-align: center;
+    letter-spacing: 1px; outline: none; font-family: 'Kanit'; text-transform: uppercase;
+}
+.station-actions input:focus { border-color: var(--green); }
+
+/* Toast Notification */
+.toast {
+    position: fixed; bottom: 25px; right: 25px; background: #0d1426ee;
+    border: 1px solid #34d39966; color: #fff; padding: 14px 22px;
+    border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transform: translateY(100px); opacity: 0; transition: 0.3s; z-index: 100;
+    backdrop-filter: blur(10px); font-weight: 600;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.error { border-color: #fb718566; color: #fb7185; }
+
+@media(max-width: 650px) {
+    .station-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .station-actions { justify-content: space-between; }
+    .station-actions input { flex: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+    <div class="header-box">
+        <h1>🧙‍♂️ Math Dungeon — Teacher Control</h1>
+        <p>ตั้งค่ารหัสผ่าน (Access Code) สำหรับแต่ละฐานการเรียนรู้ ข้อมูลจะถูกความปลอดภัยตรวจสอบที่เซิร์ฟเวอร์</p>
+    </div>
+
+    <div class="card">
+        <label>ADMIN SECURITY KEY</label>
+        <div class="key-row">
+            <input id="key" class="key" type="password" placeholder="ใส่ ADMIN_KEY ของเซิร์ฟเวอร์" autocomplete="current-password">
+            <button class="btn" onclick="loadStations()">🔓 โหลดข้อมูลฐาน</button>
+        </div>
+        <div id="stationsContainer">
+            <p style="text-align: center; color: #64708d; padding: 20px;">กรุณากรอก Admin Key แล้วกดโหลดข้อมูล</p>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast">บันทึกสำเร็จ</div>
+
+<script>
+// โหลด Key ที่เคยบันทึกไว้ในเบราว์เซอร์อัตโนมัติ
+window.addEventListener('DOMContentLoaded', () => {
+    const savedKey = localStorage.getItem('math_admin_key');
+    if (savedKey) {
+        document.getElementById('key').value = savedKey;
+        loadStations();
+    }
+});
+
+async function loadStations() {
+    const key = document.getElementById('key').value.trim();
+    if (!key) return showToast('กรุณากรอก Admin Key', true);
+    
+    localStorage.setItem('math_admin_key', key);
+
+    try {
+        const r = await fetch('/api/admin/stations?key=' + encodeURIComponent(key));
+        if (!r.ok) throw new Error('Unauthorized');
+        const data = await r.json();
+
+        document.getElementById('stationsContainer').innerHTML = `
+            <div class="stations-list">
+                ${data.map(s => `
+                    <div class="station-row">
+                        <div class="station-badge">#${s.id}</div>
+                        <div class="station-info">
+                            <b>${esc(s.name)}</b>
+                            <small>${esc(s.subtitle || '')} · รางวัล: ${s.reward} แต้ม</small>
+                        </div>
+                        <div class="station-actions">
+                            <input id="c${s.id}" value="${esc(s.code)}" maxlength="20" placeholder="รหัสผ่าน">
+                            <button class="btn btn-sm btn-rand" onclick="randomCode(${s.id})" title="สุ่มรหัส">🎲</button>
+                            <button class="btn btn-sm" onclick="saveStation(${s.id})">💾 บันทึก</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        showToast('โหลดข้อมูลสำเร็จ');
+    } catch (e) {
+        showToast('Admin Key ไม่ถูกต้อง หรือเชื่อมต่อเซิร์ฟเวอร์ไม่ได้', true);
+    }
+}
+
+async function saveStation(id) {
+    const key = document.getElementById('key').value.trim();
+    const codeInput = document.getElementById('c' + id);
+    const code = codeInput.value.trim();
+
+    if (!code) return showToast('รหัสผ่านห้ามว่าง', true);
+
+    try {
+        const r = await fetch('/api/admin/stations?key=' + encodeURIComponent(key), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, code })
+        });
+        const res = await r.json();
+        if (r.ok) {
+            showToast('บันทึกรหัสฐาน #' + id + ' สำเร็จแล้ว');
+        } else {
+            showToast(res.error || 'บันทึกไม่สำเร็จ', true);
+        }
+    } catch (e) {
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', true);
+    }
+}
+
+function randomCode(id) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'MATH-';
+    for (let i = 0; i < 3; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('c' + id).value = code;
+}
+
+function showToast(text, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.className = 'toast ' + (isError ? 'error' : '') + ' show';
+    clearTimeout(showToast.tm);
+    showToast.tm = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+
+</body>
+</html>
