@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Custom Edition</title>
+<title>Math Dungeon Online — Optimized Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -450,7 +450,7 @@ button { cursor: pointer; }
         socket.on('playerReady', d => {
             me = d.player;
             updateUI();
-            showToast('ยินดีต้อนรับสู่ดันเจี้ยน', me.name + ' เริ่มต้นการผจญภัยแล้ว (ข้อมูลจำ 3 วัน)', 'cyan');
+            showToast('ยินดีต้อนรับสู่ดันเจี้ยน', me.name + ' เริ่มต้นการผจญภัยแล้ว (จำข้อมูล 3 วัน)', 'cyan');
         });
 
         socket.on('stateUpdate', p => {
@@ -799,7 +799,8 @@ button { cursor: pointer; }
 
         function drawPlayer(p, isMe) {
             ctx.save();
-            ctx.translate(p.x, p.y);
+            // ปัดเศษพิกัดด้วย Math.round ป้องกันอาการภาพสั่น
+            ctx.translate(Math.round(p.x), Math.round(p.y));
             const bob = p.isMoving ? Math.sin(Date.now() / 80) * 2 : 0;
             ctx.translate(0, bob);
             
@@ -809,29 +810,24 @@ button { cursor: pointer; }
                 ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.stroke();
             }
             
-            // สีเสื้อตามตัวเลือก (5 แบบ)
             const shirtColors = { shirt1: '#6366f1', shirt2: '#8b5cf6', shirt3: '#06b6d4', shirt4: '#f59e0b', shirt5: '#10b981' };
             ctx.fillStyle = shirtColors[p.shirt] || '#6366f1';
             ctx.beginPath(); ctx.roundRect(-14, -4, 28, 16, 4); ctx.fill();
 
-            // สีและแบบกางเกง (5 แบบ)
             const pantsColors = { pants1: '#1e293b', pants2: '#334155', pants3: '#475569', pants4: '#0f172a', pants5: '#1e3a8a' };
             ctx.fillStyle = pantsColors[p.pants] || '#1e293b';
             ctx.fillRect(-12, 12, 10, 8);
             ctx.fillRect(2, 12, 10, 8);
 
-            // รองเท้า (5 แบบ)
             const shoesColors = { shoes1: '#0f172a', shoes2: '#78350f', shoes3: '#334155', shoes4: '#38bdf8', shoes5: '#fbbf24' };
             ctx.fillStyle = shoesColors[p.shoes] || '#0f172a';
             ctx.fillRect(-12, 20, 9, 5);
             ctx.fillRect(3, 20, 9, 5);
 
-            // หัวตัวละครตามสาย (5 แบบ)
             const skinColors = { hero: '#fde68a', wizard: '#e0e7ff', robot: '#cbd5e1', rogue: '#fecaca', cleric: '#fef08a' };
             ctx.fillStyle = skinColors[p.avatar] || '#fde68a';
             ctx.beginPath(); ctx.arc(0, -18, 12, 0, Math.PI * 2); ctx.fill();
             
-            // หมวก (5 แบบ)
             if (p.hat === 'wizard_hat') {
                 ctx.fillStyle = '#7c3aed';
                 ctx.beginPath(); ctx.moveTo(-15, -25); ctx.lineTo(15, -25); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
@@ -849,14 +845,14 @@ button { cursor: pointer; }
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 11px Kanit';
             ctx.textAlign = 'center';
-            ctx.fillText(p.name, 0, -52);
+            ctx.fillText(p.name, 0, -50);
             
             if (p.score > 0) {
                 const top = [...Object.values(players)].sort((a, b) => b.score - a.score)[0];
                 if (top && top.name === p.name) {
                     ctx.fillStyle = '#fbbf24';
                     ctx.font = '14px sans-serif';
-                    ctx.fillText('👑', 0, -64);
+                    ctx.fillText('👑', 0, -62);
                 }
             }
             ctx.restore();
@@ -872,8 +868,13 @@ button { cursor: pointer; }
                     if (dx || dy) { const l = Math.hypot(dx, dy); dx /= l; dy /= l; }
                 }
                 if (dx !== 0 || dy !== 0) {
-                    socket.emit('move', { x: me.x + dx * 6.5, y: me.y + dy * 6.5, isMoving: true });
+                    const speed = 6.5;
+                    me.x = Math.max(80, Math.min(world.width - 80, me.x + dx * speed));
+                    me.y = Math.max(80, Math.min(world.height - 80, me.y + dy * speed));
+                    me.isMoving = true;
+                    socket.emit('move', { x: me.x, y: me.y, isMoving: true });
                 } else {
+                    me.isMoving = false;
                     socket.emit('move', { x: me.x, y: me.y, isMoving: false });
                 }
             }
