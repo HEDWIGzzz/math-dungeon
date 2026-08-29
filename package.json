@@ -1,9 +1,22 @@
 {
-  "name":"math-dungeon-online",
-  "version":"1.0.0",
-  "private":true,
-  "description":"Multiplayer classroom math RPG with unlockable stations",
-  "main":"server.js",
-  "scripts":{"start":"node server.js","dev":"node server.js"},
-  "dependencies":{"express":"^4.21.2","socket.io":"^4.8.1"}
+  "name": "math-dungeon-online",
+  "version": "1.0.0",
+  "description": "2D Multiplayer Educational RPG Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "game",
+    "math",
+    "multiplayer",
+    "socket.io",
+    "canvas"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
 }
