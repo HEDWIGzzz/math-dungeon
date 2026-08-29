@@ -33,7 +33,7 @@ const world = { width: 4000, height: 4000 };
 const players = new Map();
 let nextTileId = 1;
 
-// ระบบบันทึกข้อมูลผู้เล่น (เก็บนาน 3 วัน = 3 * 24 * 60 * 60 * 1000 ms)
+// ระบบบันทึกข้อมูลผู้เล่น (เก็บนาน 3 วัน = 3 * 24 * 60 * 60 * 1000 มิลลิวินาที)
 const SAVE_FILE = path.join(__dirname, 'player_saves.json');
 let savedPlayers = {};
 
@@ -43,7 +43,6 @@ function loadSaves() {
             const data = JSON.parse(fs.readFileSync(SAVE_FILE, 'utf8'));
             const now = Date.now();
             const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
-            // กรองข้อมูลที่เก่าเกิน 3 วันทิ้ง
             for (let name in data) {
                 if (now - data[name].lastActive < THREE_DAYS) {
                     savedPlayers[name] = data[name];
@@ -137,9 +136,8 @@ io.on('connection', (socket) => {
 
     socket.on('setupPlayer', (data = {}) => {
         const name = sanitizeName(data.name);
-        
-        // ตรวจสอบข้อมูลเก่าที่บันทึกไว้ภายใน 3 วัน
         let existing = savedPlayers[name];
+        
         let p = {
             id: socket.id,
             name: name,
@@ -161,7 +159,6 @@ io.on('connection', (socket) => {
 
         players.set(socket.id, p);
         
-        // บันทึกสถานะปัจจุบัน
         savedPlayers[name] = {
             score: p.score, xp: p.xp, level: p.level, completed: p.completed,
             unlocked: [...p.unlocked], lastActive: Date.now()
@@ -177,7 +174,7 @@ io.on('connection', (socket) => {
         if (!p) return;
         
         const now = Date.now(); 
-        if (now - p.lastMove < 25) return; 
+        if (now - p.lastMove < 20) return; 
         p.lastMove = now;
 
         const x = Number(data.x), y = Number(data.y); 
