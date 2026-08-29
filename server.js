@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,14 +15,12 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Health check endpoint
 app.get('/health', (req, res) => res.status(200).json({ ok: true, service: 'math-dungeon-online', activePlayers: players.size }));
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'TEACHER-2026';
 const MAX_PLAYERS = 80;
 
-// สถานีภารกิจในดันเจี้ยนเวทมนตร์ (ครูสามารถเปลี่ยนรหัสได้ผ่านหน้า /admin)
 const stations = [
     { id: 1, name: 'ประตูแห่งสมการ', subtitle: 'หอคอยเริ่มต้น', x: 700, y: 700, code: 'MATH-101', reward: 100, color: '#65d9ff' },
     { id: 2, name: 'วิหารพีชคณิต', subtitle: 'Algebra Temple', x: 3300, y: 700, code: 'MATH-202', reward: 150, color: '#a78bfa' },
@@ -34,6 +33,42 @@ const world = { width: 4000, height: 4000 };
 const players = new Map();
 let nextTileId = 1;
 
+// ระบบบันทึกข้อมูลผู้เล่น (เก็บนาน 3 วัน = 3 * 24 * 60 * 60 * 1000 ms)
+const SAVE_FILE = path.join(__dirname, 'player_saves.json');
+let savedPlayers = {};
+
+function loadSaves() {
+    try {
+        if (fs.existsSync(SAVE_FILE)) {
+            const data = JSON.parse(fs.readFileSync(SAVE_FILE, 'utf8'));
+            const now = Date.now();
+            const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+            // กรองข้อมูลที่เก่าเกิน 3 วันทิ้ง
+            for (let name in data) {
+                if (now - data[name].lastActive < THREE_DAYS) {
+                    savedPlayers[name] = data[name];
+                }
+            }
+        }
+    } catch(e) { savedPlayers = {}; }
+}
+
+function saveSaves() {
+    try {
+        const now = Date.now();
+        const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+        const cleanData = {};
+        for (let name in savedPlayers) {
+            if (now - savedPlayers[name].lastActive < THREE_DAYS) {
+                cleanData[name] = savedPlayers[name];
+            }
+        }
+        fs.writeFileSync(SAVE_FILE, JSON.stringify(cleanData, null, 2));
+    } catch(e) {}
+}
+
+loadSaves();
+
 function sanitizeName(v) {
     return String(v || 'จอมเวทย์ฝึกหัด').replace(/[<>]/g, '').trim().slice(0, 18) || 'จอมเวทย์ฝึกหัด';
 }
@@ -42,7 +77,7 @@ function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function publicPlayer(p) {
     return { 
         id: p.id, name: p.name, x: p.x, y: p.y, 
-        avatar: p.avatar, outfitColor: p.outfitColor, hat: p.hat, 
+        avatar: p.avatar, hat: p.hat, shirt: p.shirt, pants: p.pants, shoes: p.shoes,
         score: p.score, xp: p.xp, level: p.level, 
         isMoving: p.isMoving, completed: p.completed 
     };
@@ -101,18 +136,38 @@ io.on('connection', (socket) => {
     });
 
     socket.on('setupPlayer', (data = {}) => {
-        const p = {
+        const name = sanitizeName(data.name);
+        
+        // ตรวจสอบข้อมูลเก่าที่บันทึกไว้ภายใน 3 วัน
+        let existing = savedPlayers[name];
+        let p = {
             id: socket.id,
-            name: sanitizeName(data.name),
-            avatar: ['hero', 'wizard', 'robot'].includes(data.avatar) ? data.avatar : 'hero',
-            outfitColor: /^#[0-9a-f]{6}$/i.test(data.outfitColor || '') ? data.outfitColor : '#6d5dfc',
-            hat: ['none', 'wizard_hat', 'cap'].includes(data.hat) ? data.hat : 'none',
+            name: name,
+            avatar: ['hero', 'wizard', 'robot', 'rogue', 'cleric'].includes(data.avatar) ? data.avatar : 'hero',
+            hat: ['none', 'wizard_hat', 'cap', 'crown', 'hood'].includes(data.hat) ? data.hat : 'none',
+            shirt: ['shirt1', 'shirt2', 'shirt3', 'shirt4', 'shirt5'].includes(data.shirt) ? data.shirt : 'shirt1',
+            pants: ['pants1', 'pants2', 'pants3', 'pants4', 'pants5'].includes(data.pants) ? data.pants : 'pants1',
+            shoes: ['shoes1', 'shoes2', 'shoes3', 'shoes4', 'shoes5'].includes(data.shoes) ? data.shoes : 'shoes1',
             x: 2000 + Math.random() * 100 - 50, 
             y: 2400 + Math.random() * 100 - 50,
-            score: 0, xp: 0, level: 1, isMoving: false, completed: 0, lastMove: 0,
-            unlocked: new Set()
+            score: existing ? existing.score : 0, 
+            xp: existing ? existing.xp : 0, 
+            level: existing ? existing.level : 1, 
+            isMoving: false, 
+            completed: existing ? existing.completed : 0, 
+            lastMove: 0,
+            unlocked: existing ? new Set(existing.unlocked) : new Set()
         };
+
         players.set(socket.id, p);
+        
+        // บันทึกสถานะปัจจุบัน
+        savedPlayers[name] = {
+            score: p.score, xp: p.xp, level: p.level, completed: p.completed,
+            unlocked: [...p.unlocked], lastActive: Date.now()
+        };
+        saveSaves();
+
         socket.emit('playerReady', { player: publicPlayer(p) });
         broadcastState();
     });
@@ -171,6 +226,9 @@ io.on('connection', (socket) => {
             p.xp += 50; 
             p.level = levelFromXp(p.xp);
             
+            savedPlayers[p.name] = { score: p.score, xp: p.xp, level: p.level, completed: p.completed, unlocked: [...p.unlocked], lastActive: Date.now() };
+            saveSaves();
+
             socket.emit('equationResult', { success: true, score: p.score, xp: p.xp, level: p.level });
             broadcastState();
         } catch (e) {
@@ -210,6 +268,9 @@ io.on('connection', (socket) => {
         p.xp += station.reward * 2; 
         p.level = levelFromXp(p.xp);
         
+        savedPlayers[p.name] = { score: p.score, xp: p.xp, level: p.level, completed: p.completed, unlocked: [...p.unlocked], lastActive: Date.now() };
+        saveSaves();
+
         socket.emit('stationResult', { success: true, stationId: station.id, reward: station.reward, score: p.score, xp: p.xp, level: p.level, unlocked: [...p.unlocked] });
         io.emit('stationWorldUpdate', { stationId: station.id, playerId: p.id });
         broadcastState();
@@ -221,7 +282,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Teacher Admin API (Protected with ADMIN_KEY)
 app.get('/api/admin/stations', (req, res) => {
     if (req.query.key !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
     res.json(stations);
@@ -238,7 +298,6 @@ app.post('/api/admin/stations', (req, res) => {
     res.json({ ok: true, id: s.id, newCode: s.code });
 });
 
-// Admin Dashboard หน้าเว็บสำหรับคุณครู (รองรับทั้ง /admin และ /admin.html)
 const adminHtmlHandler = (req, res) => {
     res.send(`
     <!doctype html>
