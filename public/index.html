@@ -1,215 +1,245 @@
 <!doctype html>
 <html lang="th">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Math Dungeon Online</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
-        
-        :root {
-            --bg: #070914;
-            --panel: rgba(11, 15, 30, 0.86);
-            --line: rgba(255, 255, 255, 0.12);
-            --cyan: #65d9ff;
-            --purple: #a78bfa;
-            --gold: #f7c948;
-            --green: #34d399;
-            --red: #fb7185;
-        }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Math Dungeon Online - Masterpiece Edition</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
 
-        * { box-sizing: border-box; }
-        html, body {
-            margin: 0; width: 100%; height: 100%;
-            overflow: hidden; background: var(--bg);
-            color: #fff; font-family: 'Kanit', sans-serif;
-            user-select: none;
-        }
-        button, input { font: inherit; }
-        button { cursor: pointer; }
+:root {
+    --bg: #070914;
+    --panel: rgba(11, 15, 30, 0.88);
+    --line: rgba(255, 255, 255, 0.14);
+    --cyan: #65d9ff;
+    --purple: #a78bfa;
+    --gold: #f7c948;
+    --green: #34d399;
+    --red: #fb7185;
+}
 
-        #game {
-            position: fixed; inset: 0; width: 100%; height: 100%;
-            display: block; background: #080b17;
-        }
-        #vignette {
-            position: fixed; inset: 0; pointer-events: none;
-            background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.48) 100%);
-        }
+* { box-sizing: border-box; }
+html, body {
+    margin: 0; width: 100%; height: 100%;
+    overflow: hidden; background: var(--bg);
+    color: #fff; font-family: 'Kanit', sans-serif;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; }
+button { cursor: pointer; }
 
-        .hud { position: fixed; inset: 0; pointer-events: none; }
-        .top { height: 84px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
-        .glass {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28);
-            backdrop-filter: blur(12px);
-        }
+#game {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    display: block; background: #080b17;
+}
+#vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.65) 100%);
+    z-index: 5;
+}
 
-        .player-card {
-            height: 60px; min-width: 270px; border-radius: 16px;
-            padding: 9px 14px; display: flex; gap: 12px; align-items: center;
-        }
-        .avatar-mini {
-            width: 42px; height: 42px; border-radius: 12px;
-            background: linear-gradient(135deg, #5b4ae8, #25b6d9);
-            display: grid; place-items: center; font-size: 23px;
-            box-shadow: 0 0 20px #5b4ae855;
-        }
-        .pname { font-weight: 700; }
-        .sub { font-size: 12px; color: #aab3ca; }
-        .xpbar { width: 150px; height: 6px; background: #20283e; border-radius: 99px; overflow: hidden; margin-top: 5px; }
-        .xpbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--purple), var(--cyan)); border-radius: 99px; }
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.top { height: 84px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.glass {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+}
 
-        .spacer { flex: 1; }
-        .score { padding: 10px 16px; border-radius: 14px; font-weight: 700; color: var(--gold); font-size: 18px; }
-        .mini { width: 190px; height: 60px; border-radius: 16px; overflow: hidden; position: relative; }
-        .mini canvas { width: 100%; height: 100%; display: block; }
-        .mini-label { position: absolute; left: 9px; top: 5px; font-size: 11px; color: #c9d2e7; background: #070914aa; padding: 1px 6px; border-radius: 8px; }
+.player-card {
+    height: 60px; min-width: 270px; border-radius: 16px;
+    padding: 9px 14px; display: flex; gap: 12px; align-items: center;
+}
+.avatar-mini {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, #5b4ae8, #25b6d9);
+    display: grid; place-items: center; font-size: 23px;
+    box-shadow: 0 0 20px #5b4ae855;
+}
+.pname { font-weight: 700; font-size: 15px; }
+.sub { font-size: 12px; color: #aab3ca; }
+.xpbar { width: 150px; height: 6px; background: #20283e; border-radius: 99px; overflow: hidden; margin-top: 5px; }
+.xpbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--purple), var(--cyan)); border-radius: 99px; transition: width 0.3s ease; }
 
-        .left { position: fixed; left: 16px; top: 100px; width: 285px; pointer-events: none; }
-        .quest { border-radius: 18px; padding: 15px; pointer-events: auto; }
-        .eyebrow { font-size: 11px; color: var(--cyan); letter-spacing: 1.2px; font-weight: 700; }
-        .quest h2 { margin: 4px 0 2px; font-size: 19px; }
-        .quest p { margin: 0; color: #aeb7cc; font-size: 13px; }
-        .progress { margin-top: 13px; height: 8px; background: #20283e; border-radius: 99px; overflow: hidden; }
-        .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: .5s; }
+.spacer { flex: 1; }
+.score { padding: 10px 18px; border-radius: 14px; font-weight: 700; color: var(--gold); font-size: 18px; text-shadow: 0 0 10px rgba(247, 201, 72, 0.4); }
+.mini { width: 190px; height: 60px; border-radius: 16px; overflow: hidden; position: relative; }
+.mini canvas { width: 100%; height: 100%; display: block; }
+.mini-label { position: absolute; left: 9px; top: 5px; font-size: 10px; color: #c9d2e7; background: #070914cc; padding: 1px 6px; border-radius: 6px; letter-spacing: 0.5px; }
 
-        .stations { margin-top: 12px; display: grid; gap: 6px; }
-        .st { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: 11px; background: #11182b88; border: 1px solid transparent; }
-        .st.active { border-color: #65d9ff55; background: #18223c; }
-        .st.done { opacity: .9; }
-        .dot { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: #202a40; font-size: 12px; }
-        .st.done .dot { background: #1b7657; color: #fff; }
-        .st b { font-size: 12px; }
-        .st small { display: block; color: #8490aa; font-size: 10px; }
+.left { position: fixed; left: 16px; top: 100px; width: 285px; pointer-events: none; }
+.quest { border-radius: 18px; padding: 15px; pointer-events: auto; }
+.eyebrow { font-size: 11px; color: var(--cyan); letter-spacing: 1.2px; font-weight: 700; }
+.quest h2 { margin: 4px 0 2px; font-size: 19px; }
+.quest p { margin: 0; color: #aeb7cc; font-size: 13px; }
+.progress { margin-top: 13px; height: 8px; background: #20283e; border-radius: 99px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: .5s; }
 
-        .right { position: fixed; right: 16px; top: 100px; width: 250px; pointer-events: none; }
-        .board { border-radius: 18px; padding: 13px; pointer-events: auto; }
-        .board h3 { margin: 0 0 8px; font-size: 14px; }
-        .rank { display: flex; gap: 8px; align-items: center; padding: 7px 6px; border-radius: 10px; }
-        .rank:nth-child(2) { background: #ffffff06; }
-        .rankno { width: 24px; color: #7e8aa5; font-size: 12px; }
-        .rankname { flex: 1; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .rankscore { font-size: 12px; color: var(--gold); font-weight: 700; }
+.stations { margin-top: 12px; display: grid; gap: 6px; }
+.st { display: flex; align-items: center; gap: 9px; padding: 8px; border-radius: 11px; background: #11182b88; border: 1px solid transparent; transition: 0.2s; }
+.st.active { border-color: #65d9ff55; background: #18223c; box-shadow: 0 0 15px rgba(101, 217, 255, 0.15); }
+.st.done { opacity: .9; }
+.dot { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: #202a40; font-size: 12px; font-weight: bold; }
+.st.done .dot { background: #1b7657; color: #fff; }
+.st b { font-size: 12px; }
+.st small { display: block; color: #8490aa; font-size: 10px; }
 
-        .bottom { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(780px, calc(100% - 32px)); pointer-events: auto; }
-        .forge { border-radius: 20px; padding: 11px; }
-        .forge-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
-        .forge-title { font-weight: 700; font-size: 14px; }
-        .forge-hint { font-size: 11px; color: #8792aa; }
-        
-        .eq {
-            min-height: 50px; border-radius: 13px; background: #070b18;
-            border: 1px dashed #64708d; display: flex; align-items: center;
-            justify-content: center; gap: 6px; padding: 7px; overflow-x: auto;
-        }
-        .tile {
-            min-width: 38px; height: 38px; border-radius: 10px;
-            display: grid; place-items: center; font-weight: 700; font-size: 18px;
-            box-shadow: 0 5px 12px #0005; transition: .12s;
-        }
-        .tile:hover { transform: translateY(-2px); }
-        .num { background: #f7c948; color: #111827; }
-        .op { background: #fb7185; }
-        .eqtile { background: #60a5fa; }
+.right { position: fixed; right: 16px; top: 100px; width: 250px; pointer-events: none; }
+.board { border-radius: 18px; padding: 13px; pointer-events: auto; }
+.board h3 { margin: 0 0 8px; font-size: 14px; letter-spacing: 0.5px; }
+.rank { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 10px; transition: 0.2s; }
+.rank:nth-child(2) { background: rgba(255, 255, 255, 0.04); }
+.rankno { width: 24px; color: #7e8aa5; font-size: 12px; font-weight: bold; }
+.rankname { flex: 1; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rankscore { font-size: 12px; color: var(--gold); font-weight: 700; }
 
-        .inv { display: flex; gap: 5px; justify-content: center; min-height: 42px; padding-top: 7px; flex-wrap: wrap; }
-        .actions { display: flex; gap: 8px; justify-content: center; margin-top: 7px; }
-        .btn { border: 1px solid var(--line); border-radius: 11px; padding: 8px 18px; color: white; background: #141b2d; font-weight: 700; }
-        .btn.primary { background: linear-gradient(135deg, #6d5dfc, #21a9d5); border: 0; }
-        .btn:hover { filter: brightness(1.12); }
+.bottom { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(780px, calc(100% - 32px)); pointer-events: auto; }
+.forge { border-radius: 20px; padding: 12px; }
+.forge-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.forge-title { font-weight: 700; font-size: 14px; }
+.forge-hint { font-size: 11px; color: #8792aa; }
 
-        .toast {
-            position: fixed; left: 50%; top: 95px; transform: translate(-50%, -20px) scale(.96);
-            opacity: 0; padding: 12px 20px; border-radius: 14px; background: #0d1426ee;
-            border: 1px solid #ffffff22; box-shadow: 0 14px 50px #0008; transition: .25s;
-            pointer-events: none; text-align: center; z-index: 20;
-        }
-        .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        .toast b { display: block; }
-        .toast span { font-size: 12px; color: #aeb7cc; }
+.eq {
+    min-height: 52px; border-radius: 13px; background: #070b18;
+    border: 1px dashed #64708d; display: flex; align-items: center;
+    justify-content: center; gap: 6px; padding: 7px; overflow-x: auto;
+}
+.tile {
+    min-width: 40px; height: 40px; border-radius: 10px;
+    display: grid; place-items: center; font-weight: 700; font-size: 18px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: .15s; cursor: pointer;
+}
+.tile:hover { transform: translateY(-3px) scale(1.05); filter: brightness(1.1); }
+.num { background: var(--gold); color: #111827; }
+.op { background: var(--red); color: #fff; }
+.eqtile { background: var(--cyan); color: #111827; }
 
-        .modal {
-            position: fixed; inset: 0; background: #02040acc;
-            display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px;
-        }
-        .modal.show { display: flex; }
-        .modalbox {
-            width: min(440px, 100%); border-radius: 24px; padding: 25px;
-            background: linear-gradient(180deg, #121a30, #090e1e);
-            border: 1px solid #ffffff1c; box-shadow: 0 30px 100px #000;
-        }
-        .seal {
-            width: 70px; height: 70px; border-radius: 20px; margin: 0 auto 10px;
-            display: grid; place-items: center; font-size: 32px; background: #65d9ff18;
-            border: 1px solid #65d9ff55; box-shadow: 0 0 40px #65d9ff22;
-        }
-        .modal h1 { text-align: center; font-size: 25px; margin: 5px 0; }
-        .modal p { text-align: center; color: #98a4bd; font-size: 13px; }
-        .code {
-            width: 100%; padding: 14px; border-radius: 13px; border: 1px solid #33405c;
-            background: #060a16; color: white; text-align: center; font-size: 24px;
-            letter-spacing: 4px; outline: none; text-transform: uppercase;
-        }
-        .modal-actions { display: flex; gap: 8px; margin-top: 10px; }
-        .modal-actions button { flex: 1; }
-        .close { background: #171e31; }
-        .success { color: var(--green) !important; }
+.inv { display: flex; gap: 6px; justify-content: center; min-height: 46px; padding-top: 8px; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.btn { border: 1px solid var(--line); border-radius: 12px; padding: 8px 20px; color: white; background: #141b2d; font-weight: 700; transition: 0.2s; }
+.btn.primary { background: linear-gradient(135deg, #6d5dfc, #21a9d5); border: 0; box-shadow: 0 4px 15px rgba(109, 93, 252, 0.4); }
+.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-        #nameModal { display: flex; }
-        .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .name-grid label { font-size: 11px; color: #8995ad; }
-        .name-grid input, .name-grid select {
-            width: 100%; margin-top: 4px; padding: 10px; border-radius: 11px;
-            border: 1px solid #33405c; background: #070b18; color: white; outline: none;
-        }
-        .full { grid-column: 1 / -1; }
-        .hintbox { margin-top: 10px; background: #0a1020; border: 1px solid #ffffff0c; border-radius: 12px; padding: 9px; font-size: 11px; color: #8995ad; }
+/* Mobile Touch D-Pad */
+.touch-dpad {
+    position: fixed; left: 20px; bottom: 140px; width: 140px; height: 140px;
+    pointer-events: auto; display: none; z-index: 15;
+}
+.d-btn {
+    position: absolute; background: rgba(101, 217, 255, 0.15); border: 1px solid rgba(101, 217, 255, 0.4);
+    border-radius: 50%; width: 48px; height: 48px; display: grid; place-items: center;
+    font-size: 18px; color: var(--cyan); font-weight: bold; backdrop-filter: blur(4px);
+}
+.d-btn:active { background: rgba(101, 217, 255, 0.4); transform: scale(0.95); }
+#btnUp { top: 0; left: 46px; }
+#btnDown { bottom: 0; left: 46px; }
+#btnLeft { top: 46px; left: 0; }
+#btnRight { top: 46px; right: 0; }
 
-        #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
-        .levelup {
-            position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.7);
-            opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s;
-        }
-        .levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        .levelup strong { font-size: 48px; color: var(--gold); text-shadow: 0 0 30px #f7c948; }
-        .levelup div { font-size: 18px; }
+@media (pointer: coarse) {
+    .touch-dpad { display: block; }
+    .help { display: none; }
+}
 
-        .help {
-            position: fixed; left: 16px; bottom: 18px; font-size: 11px; color: #76829b;
-            background: #090f1d99; border: 1px solid #ffffff0d; border-radius: 10px; padding: 7px 10px; pointer-events: none;
-        }
+.toast {
+    position: fixed; left: 50%; top: 95px; transform: translate(-50%, -20px) scale(.96);
+    opacity: 0; padding: 12px 22px; border-radius: 14px; background: #0d1426f0;
+    border: 1px solid #ffffff22; box-shadow: 0 14px 50px rgba(0,0,0,0.6); transition: .25s;
+    pointer-events: none; text-align: center; z-index: 25;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.toast b { display: block; font-size: 15px; }
+.toast span { font-size: 12px; color: #aeb7cc; }
 
-        @media(max-width: 1000px) {
-            .right { display: none; }
-            .left { width: 245px; }
-            .mini { width: 150px; }
-            .player-card { min-width: 220px; }
-            .bottom { bottom: 8px; }
-            .help { display: none; }
-        }
-        @media(max-width: 720px) {
-            .top { padding: 8px; }
-            .player-card { min-width: 0; flex: 1; }
-            .player-card .sub, .xpbar { display: none; }
-            .score { font-size: 14px; padding: 8px; }
-            .mini { display: none; }
-            .left { left: 8px; top: 82px; width: 220px; }
-            .quest { padding: 11px; }
-            .quest h2 { font-size: 16px; }
-            .bottom { width: calc(100% - 16px); }
-            .tile { min-width: 34px; height: 34px; }
-            .btn { padding: 7px 11px; }
-        }
-    </style>
+.modal {
+    position: fixed; inset: 0; background: rgba(2, 4, 10, 0.85);
+    display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px;
+    backdrop-filter: blur(8px);
+}
+.modal.show { display: flex; }
+.modalbox {
+    width: min(440px, 100%); border-radius: 24px; padding: 28px;
+    background: linear-gradient(180deg, #121a30, #090e1e);
+    border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 30px 100px rgba(0,0,0,0.8);
+}
+.seal {
+    width: 70px; height: 70px; border-radius: 20px; margin: 0 auto 12px;
+    display: grid; place-items: center; font-size: 32px; background: rgba(101, 217, 255, 0.1);
+    border: 1px solid rgba(101, 217, 255, 0.35); box-shadow: 0 0 40px rgba(101, 217, 255, 0.15);
+}
+.modal h1 { text-align: center; font-size: 25px; margin: 5px 0; }
+.modal p { text-align: center; color: #98a4bd; font-size: 13px; margin-bottom: 15px; }
+.code {
+    width: 100%; padding: 14px; border-radius: 13px; border: 1px solid #33405c;
+    background: #060a16; color: white; text-align: center; font-size: 24px;
+    letter-spacing: 4px; outline: none; text-transform: uppercase;
+}
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-actions button { flex: 1; padding: 11px; }
+.close { background: #171e31; }
+
+#nameModal { display: flex; }
+.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.name-grid label { font-size: 11px; color: #8995ad; font-weight: 600; }
+.name-grid input, .name-grid select {
+    width: 100%; margin-top: 4px; padding: 11px; border-radius: 11px;
+    border: 1px solid #33405c; background: #070b18; color: white; outline: none;
+}
+.full { grid-column: 1 / -1; }
+.hintbox { margin-top: 12px; background: rgba(10, 16, 32, 0.7); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 10px; font-size: 11px; color: #8995ad; text-align: center; }
+
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
+.levelup {
+    position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.7);
+    opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s;
+}
+.levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.levelup strong { font-size: 48px; color: var(--gold); text-shadow: 0 0 35px #f7c948; }
+.levelup div { font-size: 18px; color: #fff; font-weight: 500; }
+
+.help {
+    position: fixed; left: 16px; bottom: 18px; font-size: 11px; color: #76829b;
+    background: rgba(9, 15, 29, 0.8); border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px; padding: 7px 12px; pointer-events: none; z-index: 10;
+}
+
+@media(max-width: 1000px) {
+    .right { display: none; }
+    .left { width: 245px; }
+    .mini { width: 150px; }
+    .player-card { min-width: 220px; }
+    .bottom { bottom: 8px; }
+    .help { display: none; }
+}
+@media(max-width: 720px) {
+    .top { padding: 8px; }
+    .player-card { min-width: 0; flex: 1; }
+    .player-card .sub, .xpbar { display: none; }
+    .score { font-size: 14px; padding: 8px 12px; }
+    .mini { display: none; }
+    .left { left: 8px; top: 82px; width: 210px; }
+    .quest { padding: 11px; }
+    .quest h2 { font-size: 15px; }
+    .bottom { width: calc(100% - 16px); }
+    .tile { min-width: 36px; height: 36px; font-size: 16px; }
+    .btn { padding: 7px 14px; }
+}
+</style>
 </head>
 <body>
 
     <canvas id="game"></canvas>
-    <canvas id="mini" class="mini"></canvas>
     <div id="vignette"></div>
+
+    <!-- Mobile Virtual Touch D-Pad -->
+    <div class="touch-dpad">
+        <div class="d-btn" id="btnUp">▲</div>
+        <div class="d-btn" id="btnLeft">◀</div>
+        <div class="d-btn" id="btnRight">▶</div>
+        <div class="d-btn" id="btnDown">▼</div>
+    </div>
 
     <div class="hud">
         <!-- Top HUD -->
@@ -256,14 +286,14 @@
                 <div class="eq" id="eq"></div>
                 <div class="inv" id="inv"></div>
                 <div class="actions">
-                    <button class="btn" onclick="clearEquation()">↩ ล้าง</button>
-                    <button class="btn primary" onclick="castSpell()">✨ ร่ายคาถา</button>
+                    <button class="btn" onclick="playSound('click'); clearEquation()">↩ ล้าง</button>
+                    <button class="btn primary" onclick="playSound('click'); castSpell()">✨ ร่ายคาถา</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="help">WASD / Arrow Keys = เคลื่อนที่ · เดินชนแท่นเพื่อปลดล็อก · รหัสมาจากใบงานของครู</div>
+    <div class="help">WASD / Arrow Keys / Touch = เคลื่อนที่ · เดินชนแท่นเพื่อปลดล็อก · รหัสมาจากใบงานครู</div>
     <div id="toast" class="toast"><b id="toastTitle"></b><span id="toastText"></span></div>
 
     <!-- Station Modal -->
@@ -274,10 +304,10 @@
             <p>กรอกรหัสที่ได้จากใบงานของครูเพื่อปลดผนึกพื้นที่</p>
             <input id="codeInput" class="code" maxlength="40" autocomplete="off" placeholder="ACCESS CODE">
             <div class="modal-actions">
-                <button class="btn close" onclick="closeStation()">ยกเลิก</button>
-                <button class="btn primary" onclick="submitCode()">🔓 ปลดผนึก</button>
+                <button class="btn close" onclick="playSound('click'); closeStation()">ยกเลิก</button>
+                <button class="btn primary" onclick="playSound('click'); submitCode()">🔓 ปลดผนึก</button>
             </div>
-            <div class="hintbox">💡 รหัสถูกตรวจสอบบนเซิร์ฟเวอร์ นักเรียนไม่สามารถดูรหัสจากหน้าเว็บได้</div>
+            <div class="hintbox">💡 รหัสถูกตรวจสอบบนเซิร์ฟเวอร์อย่างปลอดภัย</div>
         </div>
     </div>
 
@@ -285,12 +315,12 @@
     <div id="nameModal" class="modal show">
         <div class="modalbox">
             <div class="seal">🏰</div>
-            <h1>เข้าสู่ Math Dungeon</h1>
+            <h1>Math Dungeon Online</h1>
             <p>ห้องเรียนคณิตศาสตร์ในรูปแบบ Multiplayer RPG</p>
             <div class="name-grid">
                 <div class="full">
                     <label>ชื่อผู้เล่น</label>
-                    <input id="nameInput" maxlength="18" placeholder="เช่น โด้">
+                    <input id="nameInput" maxlength="18" placeholder="เช่น โด้จอมเวทย์" autocomplete="off">
                 </div>
                 <div>
                     <label>ตัวละคร</label>
@@ -313,8 +343,8 @@
                     <input id="colorInput" type="color" value="#6d5dfc">
                 </div>
             </div>
-            <button class="btn primary" style="width:100%; margin-top:12px; padding:12px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
-            <div class="hintbox">ครูสามารถตั้งรหัสฐาน 1–5 ได้ที่ <b>/admin</b></div>
+            <button class="btn primary" style="width:100%; margin-top:14px; padding:13px; font-size:16px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
+            <div class="hintbox">ครูสามารถตั้งรหัสฐาน 1–5 ได้ที่ <b>/admin</b> บนเซิร์ฟเวอร์</div>
         </div>
     </div>
 
@@ -324,16 +354,48 @@
     <script>
         const socket = io();
         const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
-        const mini = document.getElementById('miniCanvas'), mctx = mini.getContext('2d');
+        
+        // Create MiniMap canvas dynamically to ensure crisp rendering
+        const mini = document.createElement('canvas');
+        mini.className = 'mini';
+        document.querySelector('.mini').replaceWith(mini);
+        const mctx = mini.getContext('2d');
 
         let W = innerWidth, H = innerHeight, dpr = devicePixelRatio || 1;
         let world = { width: 4000, height: 4000 };
         let stations = [], tiles = [], players = {};
+        let renderPlayers = {}; // Smooth Interpolation Map
         let me = null, myId = null, started = false, currentStation = null;
         let inventory = [], equation = [];
         const keys = { w: false, a: false, s: false, d: false };
         const particles = [];
+        const floatingTexts = [];
         const camera = { x: 0, y: 0 };
+
+        // Web Audio API Sound Generator (No external files required)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'collect') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+                gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'success') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554.37, now + 0.1); osc.frequency.setValueAtTime(659.25, now + 0.2);
+                gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.start(now); osc.stop(now + 0.35);
+            } else if (type === 'click') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(320, now); osc.frequency.exponentialRampToValueAtTime(160, now + 0.04);
+                gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                osc.start(now); osc.stop(now + 0.04);
+            }
+        }
 
         function resize() {
             W = innerWidth;
@@ -346,12 +408,15 @@
             
             mini.width = 180 * dpr;
             mini.height = 60 * dpr;
+            mini.style.width = '190px';
+            mini.style.height = '60px';
             mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
         addEventListener('resize', resize);
         resize();
 
         function joinGame() {
+            playSound('click');
             const nameInput = document.getElementById('nameInput');
             const name = nameInput.value.trim();
             
@@ -389,6 +454,18 @@
             }
         });
         addEventListener('keyup', e => setKey(e.key, false));
+
+        // Mobile Touch D-Pad Handlers
+        function setupTouchButton(id, keyName) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            ['touchstart', 'mousedown'].forEach(ev => btn.addEventListener(ev, e => { e.preventDefault(); keys[keyName] = true; }));
+            ['touchend', 'mouseup', 'mouseleave'].forEach(ev => btn.addEventListener(ev, e => { e.preventDefault(); keys[keyName] = false; }));
+        }
+        setupTouchButton('btnUp', 'w');
+        setupTouchButton('btnDown', 's');
+        setupTouchButton('btnLeft', 'a');
+        setupTouchButton('btnRight', 'd');
 
         // Socket Listeners
         socket.on('initGame', d => {
@@ -428,7 +505,9 @@
         socket.on('tileCollected', t => {
             inventory.push(t);
             renderForge();
-            burst(t.x, t.y, '#f7c948', 8);
+            burst(t.x, t.y, '#f7c948', 12);
+            spawnFloatingText('+Rune', t.x, t.y, '#f7c948');
+            playSound('collect');
             showToast('Rune Acquired', 'เก็บชิ้นส่วนสมการแล้ว', 'gold');
         });
 
@@ -450,7 +529,9 @@
                     showToast('ปลดล็อกแล้ว', 'พื้นที่นี้ผ่านภารกิจเรียบร้อย', 'green');
                 } else {
                     burst(me.x, me.y, '#65d9ff', 50);
+                    spawnFloatingText('+' + r.reward + ' Score', me.x, me.y - 30, '#34d399');
                     flash();
+                    playSound('success');
                     showToast('ACCESS GRANTED', '+' + r.reward + ' SCORE · +' + (r.reward * 2) + ' XP', 'green');
                 }
                 renderStations();
@@ -463,8 +544,10 @@
             if (r.success) {
                 equation = [];
                 renderForge();
+                playSound('success');
                 showToast('SPELL PERFECT', '+40 SCORE · +50 XP', 'green');
-                burst(me.x, me.y, '#a78bfa', 28);
+                burst(me.x, me.y, '#a78bfa', 32);
+                spawnFloatingText('+Spell Bonus!', me.x, me.y - 30, '#a78bfa');
             } else {
                 showToast('SPELL FAILED', r.msg, 'red');
             }
@@ -517,11 +600,13 @@
         function renderForge() {
             const box = document.getElementById('eq'), inv = document.getElementById('inv');
             box.innerHTML = equation.map((t, i) => tileEl(t, () => {
+                playSound('click');
                 inventory.push(equation.splice(i, 1)[0]);
                 renderForge();
             })).join('');
             
             inv.innerHTML = inventory.map((t, i) => tileEl(t, () => {
+                playSound('click');
                 equation.push(inventory.splice(i, 1)[0]);
                 renderForge();
             })).join('') || '<span class="sub">เก็บ Rune รอบแผนที่เพื่อเริ่มสร้างสมการ</span>';
@@ -538,6 +623,7 @@
             const t = inventory.find(x => x.id === id);
             
             if (t) {
+                playSound('click');
                 inventory = inventory.filter(x => x.id !== id);
                 equation.push(t);
                 renderForge();
@@ -545,6 +631,7 @@
             }
             const q = equation.find(x => x.id === id);
             if (q) {
+                playSound('click');
                 equation = equation.filter(x => x.id !== id);
                 inventory.push(q);
                 renderForge();
@@ -590,9 +677,13 @@
 
         function burst(x, y, c, n) {
             for (let i = 0; i < n; i++) {
-                const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 5;
-                particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c, size: 2 + Math.random() * 3 });
+                const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 6;
+                particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c, size: 2 + Math.random() * 3.5 });
             }
+        }
+
+        function spawnFloatingText(text, x, y, color) {
+            floatingTexts.push({ text, x, y, vy: -1.5, life: 1, color });
         }
 
         function drawWorld() {
@@ -607,7 +698,7 @@
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
 
-            // Floor
+            // Floor Gradient
             const g = ctx.createLinearGradient(0, 0, world.width, world.height);
             g.addColorStop(0, '#0c1222'); g.addColorStop(.5, '#11162a'); g.addColorStop(1, '#080d1a');
             ctx.fillStyle = g;
@@ -632,7 +723,7 @@
             drawCastle(2000, 2000);
             stations.forEach(s => drawStation(s));
 
-            // Tiles
+            // Tiles (Runes)
             tiles.forEach(t => {
                 ctx.save();
                 ctx.translate(t.x, t.y);
@@ -652,9 +743,42 @@
                 ctx.restore();
             });
 
-            // Players
-            const arr = Object.values(players).sort((a, b) => a.y - b.y);
-            arr.forEach(p => drawPlayer(p, p.id === myId));
+            // Players with Smooth Interpolation (Lerp)
+            for (let id in players) {
+                let p = players[id];
+                if (!renderPlayers[id]) {
+                    renderPlayers[id] = { x: p.x, y: p.y, name: p.name, level: p.level, avatar: p.avatar, hat: p.hat, outfitColor: p.outfitColor, isMoving: p.isMoving, score: p.score };
+                } else {
+                    renderPlayers[id].x += (p.x - renderPlayers[id].x) * 0.25;
+                    renderPlayers[id].y += (p.y - renderPlayers[id].y) * 0.25;
+                    renderPlayers[id].name = p.name;
+                    renderPlayers[id].level = p.level;
+                    renderPlayers[id].avatar = p.avatar;
+                    renderPlayers[id].hat = p.hat;
+                    renderPlayers[id].outfitColor = p.outfitColor;
+                    renderPlayers[id].isMoving = p.isMoving;
+                    renderPlayers[id].score = p.score;
+                }
+            }
+            for (let id in renderPlayers) {
+                if (!players[id]) delete renderPlayers[id];
+            }
+
+            const arr = Object.values(renderPlayers).sort((a, b) => a.y - b.y);
+            arr.forEach(p => drawPlayer(p, players[myId] && p.name === players[myId].name));
+
+            // Floating Texts
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 16px Kanit';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
 
             // Particles
             particles.forEach(q => {
@@ -780,7 +904,7 @@
             
             if (p.score > 0) {
                 const top = [...Object.values(players)].sort((a, b) => b.score - a.score)[0];
-                if (top && top.id === p.id) {
+                if (top && top.name === p.name) {
                     ctx.fillStyle = '#f7c948';
                     ctx.font = '18px sans-serif';
                     ctx.fillText('👑', 0, -68);
@@ -801,6 +925,15 @@
                 }
             }
             
+            // Update Floating Texts
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy;
+                ft.life -= 0.02;
+                if (ft.life <= 0) floatingTexts.splice(i, 1);
+            }
+
+            // Update Particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 const q = particles[i];
                 q.x += q.vx; q.y += q.vy;
