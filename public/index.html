@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Dynamic Joystick Edition</title>
+<title>Math Dungeon Online</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
 
 :root {
     --bg: #05070f;
-    --panel: rgba(12, 17, 33, 0.92);
+    --panel: rgba(12, 17, 33, 0.85);
     --line: rgba(255, 255, 255, 0.12);
     --cyan: #38bdf8;
     --purple: #8b5cf6;
@@ -25,26 +25,30 @@ html, body {
     overflow: hidden; background: var(--bg);
     color: #fff; font-family: 'Kanit', sans-serif;
     user-select: none; -webkit-tap-highlight-color: transparent;
+    touch-action: none; /* Prevent browser zooming/scrolling on mobile */
 }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 
-#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #070a14; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #070a14; z-index: 1; }
 #vignette {
     position: fixed; inset: 0; pointer-events: none;
-    background: radial-gradient(circle at center, transparent 35%, rgba(3, 5, 12, 0.75) 100%);
-    z-index: 5;
+    background: radial-gradient(circle at center, transparent 35%, rgba(3, 5, 12, 0.85) 100%);
+    z-index: 2;
 }
 
+/* UI Overlays */
 .hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 .glass {
     background: var(--panel);
     border: 1px solid var(--line);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-.top { height: 80px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+/* Top Bar */
+.top { height: 80px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
 .player-card { height: 56px; min-width: 240px; border-radius: 14px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; }
 .avatar-mini { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #06b6d4); display: grid; place-items: center; font-size: 22px; }
 .pname { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
@@ -60,6 +64,7 @@ button { cursor: pointer; }
 
 .mobile-rank-btn { display: none; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.4); color: var(--gold); padding: 8px 12px; border-radius: 12px; font-weight: 600; font-size: 13px; pointer-events: auto; align-items: center; gap: 4px; }
 
+/* Left Quest Panel */
 .left { position: fixed; left: 16px; top: 96px; width: 275px; pointer-events: none; }
 .quest { border-radius: 16px; padding: 14px; pointer-events: auto; transition: 0.3s ease; }
 .quest-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
@@ -69,7 +74,7 @@ button { cursor: pointer; }
 .quest h2 { margin: 2px 0 0; font-size: 15px; }
 .quest p { margin: 0 0 8px; color: #94a3b8; font-size: 12px; }
 .progress { margin-top: 6px; height: 6px; background: #1e293b; border-radius: 99px; overflow: hidden; }
-.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: 0.3s ease; }
 .stations { margin-top: 10px; display: grid; gap: 5px; }
 .st { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: rgba(255,255,255,0.02); }
 .st.active { border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.05); }
@@ -79,6 +84,7 @@ button { cursor: pointer; }
 .st b { font-size: 11px; }
 .st small { display: block; color: #64748b; font-size: 9px; }
 
+/* Right Leaderboard */
 .right { position: fixed; right: 16px; top: 96px; width: 240px; pointer-events: none; }
 .board { border-radius: 16px; padding: 12px; pointer-events: auto; }
 .board h3 { margin: 0 0 6px; font-size: 13px; color: var(--gold); }
@@ -88,99 +94,111 @@ button { cursor: pointer; }
 .rankname { flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rankscore { font-size: 11px; color: var(--gold); font-weight: 700; }
 
-.bottom { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(740px, calc(100% - 24px)); pointer-events: auto; }
+/* Bottom Spell Forge */
+.bottom { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(740px, calc(100% - 24px)); pointer-events: auto; }
 .forge { border-radius: 18px; padding: 10px 14px; }
 .forge-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .forge-title { font-weight: 700; font-size: 13px; }
-.eq { min-height: 48px; border-radius: 10px; background: #03050a; border: 1px dashed #334155; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; overflow-x: auto; }
-.tile { min-width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: .12s; }
-.tile:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
-.num { background: var(--gold); color: #0f172a; }
-.op { background: var(--red); color: #fff; }
-.eqtile { background: var(--cyan); color: #0f172a; }
+.eq { min-height: 48px; border-radius: 10px; background: rgba(3, 5, 10, 0.5); border: 1px dashed #334155; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; overflow-x: auto; }
+.tile { min-width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: .12s; border: 1px solid rgba(255,255,255,0.2); }
+.tile:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.2); }
+.num { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a; }
+.op { background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff; }
+.eqtile { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; }
 .inv { display: flex; gap: 5px; justify-content: center; min-height: 42px; padding-top: 6px; flex-wrap: wrap; }
 .actions { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
 .btn { border: 1px solid var(--line); border-radius: 10px; padding: 7px 16px; color: white; background: #1e293b; font-weight: 700; font-size: 13px; transition: 0.2s; }
-.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; }
-.btn:hover { filter: brightness(1.15); }
+.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
+.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-/* Dynamic Floating Joystick Style */
+/* Dynamic Floating Virtual Joystick */
 .touch-controller {
     position: fixed; width: 120px; height: 120px;
     background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2);
     border-radius: 50%; pointer-events: none; display: none; z-index: 20;
-    backdrop-filter: blur(6px); opacity: 0; transition: opacity 0.2s ease;
-    transform: translate(-50%, -50%);
+    backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.15s ease;
+    transform: translate(-50%, -50%); /* Center on touch */
 }
 .touch-controller.active { opacity: 1; display: block; }
-.joystick-thumb { position: absolute; top: 28px; left: 28px; width: 64px; height: 64px; background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
-@media (pointer: coarse) { .help { display: none; } }
+.joystick-thumb { 
+    position: absolute; top: 28px; left: 28px; width: 64px; height: 64px; 
+    background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7); 
+    border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
 
+/* Toasts & Notifications */
 .toast { position: fixed; left: 50%; top: 85px; transform: translate(-50%, -15px) scale(.95); opacity: 0; padding: 10px 20px; border-radius: 12px; background: rgba(12, 17, 33, 0.95); border: 1px solid rgba(255,255,255,0.15); transition: .25s; pointer-events: none; text-align: center; z-index: 25; backdrop-filter: blur(10px); }
 .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .toast b { display: block; font-size: 14px; }
 .toast span { font-size: 11px; color: #94a3b8; }
 
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
+.levelup { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7); opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s; text-shadow: 0 4px 20px rgba(251, 191, 36, 0.6); }
+.levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.levelup strong { font-size: 46px; color: var(--gold); font-weight: 800; letter-spacing: 2px; }
+.levelup div { font-size: 16px; color: #fff; margin-top: -5px; }
+
+/* Modals */
 .modal { position: fixed; inset: 0; background: rgba(3, 5, 12, 0.88); display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px; backdrop-filter: blur(10px); }
 .modal.show { display: flex; }
-.modalbox { width: min(440px, 100%); border-radius: 20px; padding: 24px; background: linear-gradient(180deg, #10172a, #070a14); border: 1px solid rgba(255, 255, 255, 0.1); max-height: 90vh; overflow-y: auto; }
-.seal { width: 50px; height: 50px; border-radius: 14px; margin: 0 auto 8px; display: grid; place-items: center; font-size: 24px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); }
-.modal h1 { text-align: center; font-size: 20px; margin: 2px 0; }
-.modal p { text-align: center; color: #94a3b8; font-size: 11px; margin-bottom: 12px; }
-.code { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155; background: #03050a; color: white; text-align: center; font-size: 20px; letter-spacing: 3px; outline: none; text-transform: uppercase; font-family: 'Kanit'; }
-.modal-actions { display: flex; gap: 8px; margin-top: 10px; }
-.modal-actions button { flex: 1; padding: 10px; }
+.modalbox { width: min(460px, 100%); border-radius: 20px; padding: 24px; background: linear-gradient(180deg, #10172a, #070a14); border: 1px solid rgba(255, 255, 255, 0.1); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+.seal { width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 12px; display: grid; place-items: center; font-size: 26px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); }
+.modal h1 { text-align: center; font-size: 22px; margin: 2px 0; color: #fff; }
+.modal p { text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 16px; }
+.code { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155; background: rgba(3, 5, 10, 0.8); color: white; text-align: center; font-size: 20px; letter-spacing: 3px; outline: none; text-transform: uppercase; font-family: 'Kanit'; transition: 0.2s; }
+.code:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-actions button { flex: 1; padding: 12px; font-size: 14px; }
 .close { background: #1e293b; }
 
+/* Customization Grid */
 #nameModal { display: flex; }
-.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.name-grid label { font-size: 10px; color: #64748b; font-weight: 600; }
-.name-grid input, .name-grid select { width: 100%; margin-top: 2px; padding: 8px; border-radius: 8px; border: 1px solid #334155; background: #03050a; color: white; outline: none; font-family: 'Kanit'; font-size: 12px; }
+.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.name-grid label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.name-grid input, .name-grid select { width: 100%; margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: rgba(3, 5, 10, 0.8); color: white; outline: none; font-family: 'Kanit'; font-size: 13px; }
+.name-grid input:focus, .name-grid select:focus { border-color: var(--purple); }
 .full { grid-column: 1 / -1; }
-.hintbox { margin-top: 8px; background: rgba(3, 5, 10, 0.6); border-radius: 8px; padding: 6px; font-size: 10px; color: #64748b; text-align: center; }
+.hintbox { margin-top: 12px; background: rgba(3, 5, 10, 0.6); border-radius: 8px; padding: 8px; font-size: 11px; color: #64748b; text-align: center; border: 1px dashed #334155; }
 
-#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
-.levelup { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7); opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s; }
-.levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.levelup strong { font-size: 40px; color: var(--gold); }
-.levelup div { font-size: 15px; color: #fff; }
-
-.help { position: fixed; left: 16px; bottom: 14px; font-size: 10px; color: #64748b; background: rgba(7, 10, 20, 0.8); border-radius: 8px; padding: 6px 10px; pointer-events: none; z-index: 10; }
-
+/* Responsive Adjustments */
 @media(max-width: 1000px) { 
     .right { display: none; } 
-    .left { width: 220px; } 
-    .mini { width: 110px; } 
+    .left { width: 240px; } 
+    .mini { display: none; } 
     .player-card { min-width: 190px; } 
-    .bottom { bottom: 6px; } 
+    .bottom { bottom: 10px; } 
     .mobile-rank-btn { display: flex; } 
 }
 @media(max-width: 720px) { 
-    .top { padding: 4px; gap: 6px; } 
+    .top { padding: 8px; gap: 6px; } 
     .player-card { min-width: 0; flex: 1; } 
     .player-card .sub, .xpbar { display: none; } 
-    .score { font-size: 12px; padding: 6px 8px; } 
-    .mini { display: none; } 
-    .left { left: 6px; top: 74px; width: 185px; } 
-    .bottom { width: calc(100% - 12px); } 
+    .score { font-size: 13px; padding: 6px 10px; } 
+    .left { left: 8px; top: 76px; width: 200px; } 
+    .bottom { width: calc(100% - 16px); } 
 }
 </style>
 </head>
 <body>
 
+    <!-- Game Canvas Layer -->
     <canvas id="game"></canvas>
     <div id="vignette"></div>
 
+    <!-- Virtual Joystick -->
     <div class="touch-controller" id="touchController">
         <div class="joystick-thumb" id="joystickThumb"></div>
     </div>
 
+    <!-- Main UI -->
     <div class="hud">
+        <!-- Top Bar -->
         <div class="top">
             <div class="player-card glass">
                 <div id="avatarMini" class="avatar-mini">🧙</div>
                 <div style="min-width:0">
-                    <div class="pname" id="playerName">เชื่อมต่อแล้ว</div>
+                    <div class="pname" id="playerName">ยังไม่เชื่อมต่อ</div>
                     <div class="sub">LV.<b id="level">1</b> · <span id="completed">0/5</span> ฐาน</div>
                     <div class="xpbar"><i id="xpFill"></i></div>
                 </div>
@@ -191,6 +209,7 @@ button { cursor: pointer; }
             <div class="mini glass"><canvas id="miniCanvas"></canvas><span class="mini-label">MINI MAP</span></div>
         </div>
 
+        <!-- Left Quest -->
         <div class="left">
             <div class="quest glass" id="questBox">
                 <div class="quest-header" onclick="toggleQuest()">
@@ -201,13 +220,14 @@ button { cursor: pointer; }
                     <span id="questToggleIcon" style="font-size: 14px; color: var(--cyan); font-weight: bold; background: rgba(56,189,248,0.1); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(56,189,248,0.3);">▲</span>
                 </div>
                 <div class="quest-body" id="questBody">
-                    <p id="questDesc">เดินทางไปที่แท่นและกรอกรหัสจากใบงาน</p>
+                    <p id="questDesc">เดินทางไปที่แท่นและกรอกรหัสผ่านจากครู</p>
                     <div class="progress"><i id="questProgress"></i></div>
                     <div class="stations" id="stations"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Right Leaderboard -->
         <div class="right">
             <div class="board glass">
                 <h3>🏆 HALL OF HEROES</h3>
@@ -215,24 +235,28 @@ button { cursor: pointer; }
             </div>
         </div>
 
+        <!-- Bottom Spell Forge -->
         <div class="bottom">
             <div class="forge glass">
                 <div class="forge-head">
-                    <div class="forge-title">✨ SPELL FORGE <span class="sub">ประกอบสมการแก้โจทย์</span></div>
+                    <div class="forge-title">✨ SPELL FORGE <span class="sub" style="font-weight:normal; margin-left:6px;">ประกอบสมการเวทมนตร์</span></div>
                 </div>
                 <div class="eq" id="eq"></div>
                 <div class="inv" id="inv"></div>
                 <div class="actions">
-                    <button class="btn" onclick="playSound('click'); clearEquation()">↩ ล้าง</button>
+                    <button class="btn" onclick="playSound('click'); clearEquation()">↩ ล้างสมการ</button>
                     <button class="btn primary" onclick="playSound('click'); castSpell()">✨ ร่ายคาถา</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="help">WASD / Arrow Keys / Joystick = เดิน · ชนแท่นเพื่อปลดล็อกฐาน · รหัสจากใบงานครู</div>
+    <!-- Modals & Notifications -->
     <div id="toast" class="toast"><b id="toastTitle"></b><span id="toastText"></span></div>
+    <div id="flash"></div>
+    <div id="levelup" class="levelup"><strong>LEVEL UP!</strong><div>พลังเวทมนตร์ของคุณเพิ่มขึ้นแล้ว</div></div>
 
+    <!-- Mobile Rank Modal -->
     <div id="mobileRankModal" class="modal">
         <div class="modalbox">
             <div class="seal">🏆</div>
@@ -243,6 +267,7 @@ button { cursor: pointer; }
         </div>
     </div>
 
+    <!-- Station Unlock Modal -->
     <div id="stationModal" class="modal">
         <div class="modalbox">
             <div class="seal">🔐</div>
@@ -251,64 +276,65 @@ button { cursor: pointer; }
             <input id="codeInput" class="code" maxlength="40" autocomplete="off" placeholder="CODE">
             <div class="modal-actions">
                 <button class="btn close" onclick="playSound('click'); closeStation()">ยกเลิก</button>
-                <button class="btn primary" onclick="playSound('click'); submitCode()">🔓 ยืนยัน</button>
+                <button class="btn primary" onclick="playSound('click'); submitCode()">🔓 ยืนยันรหัสผ่าน</button>
             </div>
-            <div class="hintbox">ระบบความปลอดภัยตรวจสอบผ่านเซิร์ฟเวอร์</div>
+            <div class="hintbox">ระบบความปลอดภัยตรวจสอบรหัสผ่านเซิร์ฟเวอร์</div>
         </div>
     </div>
 
+    <!-- Registration Modal -->
     <div id="nameModal" class="modal show">
         <div class="modalbox">
             <div class="seal">🏰</div>
             <h1>Math Dungeon Online</h1>
-            <p>ระบบบันทึกข้อมูลอัตโนมัติ (จำข้อมูลนาน 3 วัน)</p>
+            <p>ระบุตัวตนและชุดเกราะเพื่อเข้าสู่ดันเจี้ยน</p>
             <div class="name-grid">
                 <div class="full">
-                    <label>ชื่อผู้เล่น / ฉายา (ใช้ชื่อเดิมเพื่อกู้ข้อมูล)</label>
+                    <label>ชื่อผู้เล่น / ฉายา</label>
                     <input id="nameInput" maxlength="18" placeholder="เช่น อัศวินคณิตศาสตร์" autocomplete="off">
                 </div>
                 <div>
-                    <label>สายตัวละคร (5 แบบ)</label>
+                    <label>สายตัวละคร (Avatar)</label>
                     <select id="avatarInput">
-                        <option value="hero">⚔️ 1. Guardian (นักรบ)</option>
-                        <option value="wizard">🧙 2. Mage (จอมเวท)</option>
-                        <option value="robot">🤖 3. Arcane Bot (หุ่นยนต์)</option>
-                        <option value="rogue">🗡️ 4. Rogue (โจรเงา)</option>
-                        <option value="cleric">🛡️ 5. Cleric (นักบวช)</option>
+                        <option value="hero">⚔️ Guardian (นักรบ)</option>
+                        <option value="wizard">🧙 Mage (จอมเวท)</option>
+                        <option value="robot">🤖 Arcane Bot (โกเลม)</option>
+                        <option value="rogue">🗡️ Rogue (โจรเงา)</option>
+                        <option value="cleric">🛡️ Cleric (นักบวช)</option>
                     </select>
                 </div>
                 <div>
-                    <label>หมวก (5 แบบ)</label>
+                    <label>หมวก (Headgear)</label>
                     <select id="hatInput">
-                        <option value="none">1. ไม่มีหมวก</option>
-                        <option value="wizard_hat">2. หมวกพ่อมด</option>
-                        <option value="cap">3. หมวกแก๊ปเกราะ</option>
-                        <option value="crown">4. มงกุฎทองคำ</option>
-                        <option value="hood">5. ฮู้ดนักฆ่า</option>
+                        <option value="none">ไม่มีหมวก</option>
+                        <option value="wizard_hat">หมวกพ่อมดทรงสูง</option>
+                        <option value="cap">หมวกแก๊ปเกราะ</option>
+                        <option value="crown">มงกุฎทองคำ</option>
+                        <option value="hood">ฮู้ดนักฆ่าปิดหน้า</option>
                     </select>
                 </div>
                 <div>
-                    <label>เสื้อ (5 แบบ)</label>
+                    <label>เสื้อ (Armor)</label>
                     <select id="shirtInput">
-                        <option value="shirt1">เสื้อเกราะคลาสสิก</option>
-                        <option value="shirt2">เสื้อคลุมจอมเวท</option>
-                        <option value="shirt3">เสื้อเกราะเหล็กกล้า</option>
-                        <option value="shirt4">เสื้อนักรบโบราณ</option>
-                        <option value="shirt5">ชุดสูทเวทมนตร์</option>
+                        <option value="shirt1">เสื้อเกราะคลาสสิก (Indigo)</option>
+                        <option value="shirt2">เสื้อคลุมจอมเวท (Purple)</option>
+                        <option value="shirt3">เสื้อเกราะเหล็ก (Cyan)</option>
+                        <option value="shirt4">เสื้อนักรบโบราณ (Amber)</option>
+                        <option value="shirt5">ชุดสูทเวทมนตร์ (Emerald)</option>
                     </select>
                 </div>
                 <div>
-                    <label>กางเกง (5 แบบ)</label>
+                    <label>กางเกง (Legs)</label>
                     <select id="pantsInput">
-                        <option value="pants1">กางเกงผ้าฝ้าย</option>
+                        <option value="pants1">กางเกงผ้าฝ้ายดำ</option>
                         <option value="pants2">กางเกงเกราะหนัง</option>
                         <option value="pants3">กางเกงเหล็กกล้า</option>
-                        <option value="pants4">กางเกงนักรบ</option>
-                        <option value="pants5">กางเกงเวทมนตร์</option>
+                        <option value="pants4">กางเกงนักรบมืด</option>
+                        <option value="pants5">กางเกงเวทมนตร์น้ำเงิน</option>
                     </select>
                 </div>
                 <div class="full">
-                    <label>รองเท้า (5 แบบ)</label>
+                    <label>รองเท้า (Boots)</label>
                     <select id="shoesInput">
                         <option value="shoes1">รองเท้าหนังธรรมดา</option>
                         <option value="shoes2">รองเท้าบู๊ตนักเดินทาง</option>
@@ -318,64 +344,41 @@ button { cursor: pointer; }
                     </select>
                 </div>
             </div>
-            <button class="btn primary" style="width:100%; margin-top:12px; padding:12px; font-size:15px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
-            <div class="hintbox">คุณครูสามารถตั้งรหัสฐานได้ที่ <b>/admin</b></div>
+            <button class="btn primary" style="width:100%; margin-top:16px; padding:14px; font-size:16px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
+            <div class="hintbox">WASD หรือ แตะหน้าจอเพื่อบังคับทิศทาง</div>
         </div>
     </div>
 
-    <div id="flash"></div>
-    <div id="levelup" class="levelup"><strong>LEVEL UP!</strong><div>พลังเวทมนตร์ของคุณเพิ่มขึ้นแล้ว</div></div>
-
     <script>
+        // --- 1. System Init ---
         const socket = io();
-        const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency background
         
         const mini = document.createElement('canvas');
         mini.className = 'mini';
         document.querySelector('.mini').replaceWith(mini);
         const mctx = mini.getContext('2d');
 
-        let W = innerWidth, H = innerHeight, dpr = window.devicePixelRatio > 1 ? 1.5 : 1;
+        let W = innerWidth, H = innerHeight;
+        let dpr = window.devicePixelRatio > 1 ? 1.5 : 1; // Cap DPR for performance
         let world = { width: 4000, height: 4000 };
+        
         let stations = [], tiles = [], players = {};
-        let renderPlayers = {};
+        let renderPlayers = {}; // For interpolation
         let me = null, myId = null, started = false, currentStation = null;
         let inventory = [], equation = [];
+        
         const keys = { w: false, a: false, s: false, d: false };
         const particles = [];
         const floatingTexts = [];
         const camera = { x: 0, y: 0 };
 
-        let joystickActive = false;
-        let joystickTouchId = null;
-        let joyOriginX = 0, joyOriginY = 0;
-        let joystickVector = { x: 0, y: 0 };
-        let questOpen = true;
-        let modalCooldown = 0;
+        // Optimization limits
         let lastSendTime = 0;
+        let modalCooldown = 0;
 
-        let cachedWorldGradient = null;
-        function updateWorldGradient() {
-            cachedWorldGradient = ctx.createLinearGradient(0, 0, world.width, world.height);
-            cachedWorldGradient.addColorStop(0, '#0a0f20'); 
-            cachedWorldGradient.addColorStop(0.5, '#0e152d'); 
-            cachedWorldGradient.addColorStop(1, '#070a14');
-        }
-
-        function toggleQuest() {
-            questOpen = !questOpen;
-            const box = document.getElementById('questBox');
-            const icon = document.getElementById('questToggleIcon');
-            if (questOpen) { box.classList.remove('collapsed'); icon.textContent = '▲'; }
-            else { box.classList.add('collapsed'); icon.textContent = '▼'; }
-            playSound('click');
-        }
-
-        function toggleMobileRankModal() {
-            const modal = document.getElementById('mobileRankModal');
-            modal.classList.toggle('show');
-        }
-
+        // --- Audio System ---
         let audioCtx = null;
         function playSound(type) {
             try {
@@ -388,62 +391,42 @@ button { cursor: pointer; }
 
                 if (type === 'collect') {
                     osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-                    gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
                     osc.start(now); osc.stop(now + 0.12);
                 } else if (type === 'success') {
                     osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554.37, now + 0.08); osc.frequency.setValueAtTime(659.25, now + 0.16);
-                    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
                     osc.start(now); osc.stop(now + 0.3);
                 } else if (type === 'click') {
                     osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.03);
-                    gain.gain.setValueAtTime(0.04, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                    gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
                     osc.start(now); osc.stop(now + 0.03);
                 }
             } catch (e) {}
         }
 
+        // --- Screen & Resize ---
+        let cachedWorldGradient = null;
+        function updateWorldGradient() {
+            cachedWorldGradient = ctx.createLinearGradient(0, 0, world.width, world.height);
+            cachedWorldGradient.addColorStop(0, '#0a0f20'); 
+            cachedWorldGradient.addColorStop(0.5, '#0e152d'); 
+            cachedWorldGradient.addColorStop(1, '#070a14');
+        }
+
         function resize() {
             W = innerWidth; H = innerHeight;
             canvas.width = W * dpr; canvas.height = H * dpr;
-            canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             
             mini.width = 150 * dpr; mini.height = 56 * dpr;
-            mini.style.width = '150px'; mini.style.height = '56px';
             mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             updateWorldGradient();
         }
-        addEventListener('resize', resize);
+        window.addEventListener('resize', resize);
         resize();
 
-        function joinGame() {
-            playSound('click');
-            const nameInput = document.getElementById('nameInput');
-            const name = nameInput.value.trim();
-            
-            if (!name) {
-                alert('กรุณากรอกชื่อผู้เล่นก่อนเข้าสู่ดันเจี้ยน');
-                nameInput.focus();
-                return;
-            }
-
-            socket.emit('setupPlayer', {
-                name: name,
-                avatar: document.getElementById('avatarInput').value,
-                hat: document.getElementById('hatInput').value,
-                shirt: document.getElementById('shirtInput').value,
-                pants: document.getElementById('pantsInput').value,
-                shoes: document.getElementById('shoesInput').value
-            });
-
-            const modal = document.getElementById('nameModal');
-            if (modal) {
-                modal.classList.remove('show');
-                modal.style.display = 'none';
-            }
-            started = true;
-        }
-
+        // --- Input Controls (Keyboard) ---
         function setKey(k, v) {
             k = k.toLowerCase();
             if (k === 'w' || k === 'arrowup') keys.w = v;
@@ -451,20 +434,24 @@ button { cursor: pointer; }
             if (k === 'a' || k === 'arrowleft') keys.a = v;
             if (k === 'd' || k === 'arrowright') keys.d = v;
         }
-
-        addEventListener('keydown', e => {
+        window.addEventListener('keydown', e => {
             if (started) {
                 setKey(e.key, true);
-                if (e.key === 'Enter' && document.getElementById('stationModal').classList.contains('show')) {
-                    submitCode();
-                }
+                if (e.key === 'Enter' && document.getElementById('stationModal').classList.contains('show')) submitCode();
             }
         });
-        addEventListener('keyup', e => setKey(e.key, false));
+        window.addEventListener('keyup', e => setKey(e.key, false));
 
-        // Dynamic Floating Joystick Event Listeners
+        // --- Input Controls (Dynamic Virtual Joystick) ---
+        let joystickActive = false;
+        let joystickTouchId = null;
+        let joyOriginX = 0, joyOriginY = 0;
+        let joystickVector = { x: 0, y: 0 };
+        const JOY_MAX_RADIUS = 32;
+
         window.addEventListener('touchstart', e => {
             if (!started) return;
+            // Ignore touches on UI elements
             if (e.target.closest('button, input, select, .modal, .forge, .quest, .board, .player-card, .score')) return;
             if (joystickActive) return;
 
@@ -485,20 +472,23 @@ button { cursor: pointer; }
 
         window.addEventListener('touchmove', e => {
             if (!joystickActive) return;
-            e.preventDefault();
+            // Prevent scrolling while moving joystick
+            if (e.target === canvas) e.preventDefault(); 
+            
             for (let i = 0; i < e.touches.length; i++) {
                 const touch = e.touches[i];
                 if (touch.identifier === joystickTouchId) {
                     let dx = touch.clientX - joyOriginX;
                     let dy = touch.clientY - joyOriginY;
                     let distance = Math.hypot(dx, dy);
-                    if (distance > 32) {
-                        dx = (dx / distance) * 32;
-                        dy = (dy / distance) * 32;
+                    
+                    if (distance > JOY_MAX_RADIUS) {
+                        dx = (dx / distance) * JOY_MAX_RADIUS;
+                        dy = (dy / distance) * JOY_MAX_RADIUS;
                     }
                     document.getElementById('joystickThumb').style.transform = `translate(${dx}px, ${dy}px)`;
-                    joystickVector.x = dx / 32;
-                    joystickVector.y = dy / 32;
+                    joystickVector.x = dx / JOY_MAX_RADIUS;
+                    joystickVector.y = dy / JOY_MAX_RADIUS;
                     break;
                 }
             }
@@ -508,10 +498,7 @@ button { cursor: pointer; }
             if (!joystickActive) return;
             let stillActive = false;
             for (let i = 0; i < e.touches.length; i++) {
-                if (e.touches[i].identifier === joystickTouchId) {
-                    stillActive = true;
-                    break;
-                }
+                if (e.touches[i].identifier === joystickTouchId) stillActive = true;
             }
             if (!stillActive) {
                 joystickActive = false;
@@ -521,25 +508,61 @@ button { cursor: pointer; }
             }
         });
 
+        // --- Game Setup & Modals ---
+        function joinGame() {
+            playSound('click');
+            const nameInput = document.getElementById('nameInput');
+            const name = nameInput.value.trim();
+            if (!name) { alert('กรุณากรอกชื่อผู้เล่นก่อนเข้าสู่ดันเจี้ยน'); nameInput.focus(); return; }
+
+            socket.emit('setupPlayer', {
+                name: name,
+                avatar: document.getElementById('avatarInput').value,
+                hat: document.getElementById('hatInput').value,
+                shirt: document.getElementById('shirtInput').value,
+                pants: document.getElementById('pantsInput').value,
+                shoes: document.getElementById('shoesInput').value
+            });
+
+            document.getElementById('nameModal').classList.remove('show');
+            started = true;
+            
+            // Audio context requires user interaction to fully unlock
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        let questOpen = true;
+        function toggleQuest() {
+            questOpen = !questOpen;
+            const box = document.getElementById('questBox');
+            const icon = document.getElementById('questToggleIcon');
+            if (questOpen) { box.classList.remove('collapsed'); icon.textContent = '▲'; }
+            else { box.classList.add('collapsed'); icon.textContent = '▼'; }
+            playSound('click');
+        }
+
+        function toggleMobileRankModal() {
+            document.getElementById('mobileRankModal').classList.toggle('show');
+        }
+
+        // --- Socket Listeners ---
         socket.on('initGame', d => {
-            myId = d.id; world = d.world;
-            stations = d.stations; tiles = d.tiles;
-            updateWorldGradient();
-            renderStations();
+            myId = d.id; world = d.world; stations = d.stations; tiles = d.tiles;
+            updateWorldGradient(); renderStations();
         });
 
         socket.on('playerReady', d => {
-            me = d.player;
-            updateUI();
-            showToast('ยินดีต้อนรับสู่ดันเจี้ยน', me.name + ' เริ่มต้นการผจญภัยแล้ว (จำข้อมูล 3 วัน)', 'cyan');
+            me = d.player; updateUI();
+            showToast('เข้าสู่ระบบ', 'อัศวิน ' + me.name + ' เริ่มต้นการผจญภัย', 'cyan');
         });
 
         socket.on('stateUpdate', p => {
             players = p;
             if (players[myId]) {
-                const old = me;
+                const oldLevel = me ? me.level : 1;
                 me = players[myId];
-                if (old && me.level > old.level) levelUp();
+                if (me.level > oldLevel) levelUp();
                 updateUI();
             }
         });
@@ -551,16 +574,14 @@ button { cursor: pointer; }
                     <span class="rankname">${esc(p.name)}</span>
                     <span class="rankscore">${p.score.toLocaleString()}</span>
                 </div>
-            `).join('') || '<div class="sub" style="text-align:center;">รอนักผจญภัย...</div>';
-
+            `).join('') || '<div class="sub" style="text-align:center;">ยังไม่มีฮีโร่...</div>';
             document.getElementById('leaderboard').innerHTML = html;
             document.getElementById('mobileLeaderboardList').innerHTML = html;
         });
 
         socket.on('tileCollected', t => {
-            inventory.push(t);
-            renderForge();
-            burst(t.x, t.y, '#fbbf24', 8);
+            inventory.push(t); renderForge();
+            burst(t.x, t.y, '#fbbf24', 12);
             spawnFloatingText('+Rune', t.x, t.y, '#fbbf24');
             playSound('collect');
         });
@@ -580,12 +601,11 @@ button { cursor: pointer; }
             if (r.success) {
                 closeStation();
                 if (r.already) {
-                    showToast('พื้นที่ถูกปลดล็อกแล้ว', 'คุณผ่านฐานนี้ไปแล้วเรียบร้อย', 'green');
+                    showToast('พื้นที่เปิดแล้ว', 'คุณได้เคลียร์ฐานนี้ไปแล้ว', 'cyan');
                 } else {
-                    burst(me.x, me.y, '#38bdf8', 25);
-                    spawnFloatingText('+' + r.reward + ' Pts', me.x, me.y - 30, '#10b981');
-                    flash();
-                    playSound('success');
+                    burst(me.x, me.y, '#10b981', 30);
+                    spawnFloatingText('+' + r.reward + ' Pts', me.x, me.y - 40, '#10b981');
+                    flash(); playSound('success');
                     showToast('ปลดล็อกสำเร็จ!', '+' + r.reward + ' คะแนน', 'green');
                 }
                 renderStations();
@@ -596,12 +616,11 @@ button { cursor: pointer; }
 
         socket.on('equationResult', r => {
             if (r.success) {
-                equation = [];
-                renderForge();
+                equation = []; renderForge();
                 playSound('success');
-                showToast('ร่ายคาถาสัมฤทธิ์ผล!', '+40 คะแนน · +50 XP', 'green');
-                burst(me.x, me.y, '#8b5cf6', 20);
-                spawnFloatingText('+Spell Bonus!', me.x, me.y - 30, '#8b5cf6');
+                showToast('ร่ายคาถาสัมฤทธิ์ผล!', 'รับคะแนนและค่าประสบการณ์', 'purple');
+                burst(me.x, me.y, '#8b5cf6', 25);
+                spawnFloatingText('+Spell Bonus!', me.x, me.y - 40, '#8b5cf6');
             } else {
                 showToast('คาถาล้มเหลว', r.msg, 'red');
             }
@@ -609,19 +628,37 @@ button { cursor: pointer; }
 
         socket.on('stationWorldUpdate', d => {
             const st = stations.find(s => s.id === d.stationId);
-            if (st) burst(st.x, st.y, '#10b981', 20);
+            if (st) burst(st.x, st.y, '#10b981', 25);
         });
 
-        socket.on('serverFull', d => showToast('เซิร์ฟเวอร์เต็ม', 'ขออภัย ห้องเรียนนี้มีผู้เล่นครบ ' + d.max + ' คนแล้ว', 'red'));
-
+        // --- Logic & UI Updates ---
         function submitCode() {
             if (!currentStation) return;
             socket.emit('submitStationCode', { stationId: currentStation, code: document.getElementById('codeInput').value });
         }
-
         function closeStation() {
             document.getElementById('stationModal').classList.remove('show');
-            modalCooldown = Date.now() + 5000;
+            modalCooldown = Date.now() + 4000;
+        }
+
+        function updateUI() {
+            if (!me) return;
+            document.getElementById('playerName').textContent = me.name;
+            document.getElementById('level').textContent = me.level;
+            document.getElementById('score').textContent = me.score.toLocaleString();
+            document.getElementById('completed').textContent = me.completed + '/5';
+            document.getElementById('questProgress').style.width = (me.completed / 5 * 100) + '%';
+            
+            const xpPercentage = (me.xp % 500) / 5; // Assumes 500xp per level for progress bar visual
+            document.getElementById('xpFill').style.width = xpPercentage + '%';
+            
+            const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
+            document.getElementById('avatarMini').textContent = avatarIcons[me.avatar] || '🧙';
+            
+            const next = stations.find(s => s.id === me.completed + 1);
+            document.getElementById('questTitle').textContent = next ? next.name : 'ชัยชนะสมบูรณ์แบบ!';
+            document.getElementById('questDesc').textContent = next ? 'เดินทางไปที่แท่นและกรอกรหัส' : 'คุณพิชิตทุกฐานการเรียนรู้เรียบร้อยแล้ว!';
+            renderStations();
         }
 
         function renderStations() {
@@ -638,42 +675,13 @@ button { cursor: pointer; }
             }).join('');
         }
 
-        function updateUI() {
-            if (!me) return;
-            document.getElementById('playerName').textContent = me.name;
-            document.getElementById('level').textContent = me.level;
-            document.getElementById('score').textContent = me.score.toLocaleString();
-            document.getElementById('completed').textContent = me.completed + '/5';
-            document.getElementById('questProgress').style.width = (me.completed / 5 * 100) + '%';
-            
-            const xp = (me.xp % 500) / 5;
-            document.getElementById('xpFill').style.width = xp + '%';
-            
-            const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
-            document.getElementById('avatarMini').textContent = avatarIcons[me.avatar] || '🧙';
-            
-            const next = stations.find(s => s.id === me.completed + 1);
-            document.getElementById('questTitle').textContent = next ? next.name : 'ชัยชนะสมบูรณ์แบบ!';
-            document.getElementById('questDesc').textContent = next ? 'เดินทางไปที่แท่นและกรอกรหัสจากใบงาน' : 'คุณพิชิตทุกฐานการเรียนรู้เรียบร้อยแล้ว!';
-            renderStations();
-        }
-
         function renderForge() {
             const box = document.getElementById('eq'), inv = document.getElementById('inv');
-            box.innerHTML = equation.map((t, i) => tileEl(t, () => {
-                playSound('click');
-                inventory.push(equation.splice(i, 1)[0]);
-                renderForge();
-            })).join('');
-            
-            inv.innerHTML = inventory.map((t, i) => tileEl(t, () => {
-                playSound('click');
-                equation.push(inventory.splice(i, 1)[0]);
-                renderForge();
-            })).join('') || '<span class="sub">เก็บ Rune รอบแผนที่เพื่อสร้างสมการคณิตศาสตร์</span>';
+            box.innerHTML = equation.map((t, i) => tileEl(t, `eq_${i}`)).join('');
+            inv.innerHTML = inventory.map((t, i) => tileEl(t, `inv_${i}`)).join('') || '<span class="sub" style="margin-top:10px;">เดินเก็บ Rune บนแผนที่เพื่อใช้สร้างสมการ</span>';
         }
 
-        function tileEl(t) {
+        function tileEl(t, domId) {
             return `<button class="tile ${t.type === 'num' ? 'num' : t.type === 'op' ? 'op' : 'eqtile'}" data-id="${t.id}">${esc(t.char)}</button>`;
         }
 
@@ -681,76 +689,72 @@ button { cursor: pointer; }
             const b = e.target.closest('.tile');
             if (!b) return;
             const id = Number(b.dataset.id);
-            const t = inventory.find(x => x.id === id);
             
-            if (t) {
+            const inInv = inventory.findIndex(x => x.id === id);
+            if (inInv !== -1) {
                 playSound('click');
-                inventory = inventory.filter(x => x.id !== id);
-                equation.push(t);
-                renderForge();
-                return;
+                equation.push(inventory.splice(inInv, 1)[0]);
+                renderForge(); return;
             }
-            const q = equation.find(x => x.id === id);
-            if (q) {
+            
+            const inEq = equation.findIndex(x => x.id === id);
+            if (inEq !== -1) {
                 playSound('click');
-                equation = equation.filter(x => x.id !== id);
-                inventory.push(q);
+                inventory.push(equation.splice(inEq, 1)[0]);
                 renderForge();
             }
         });
 
         function clearEquation() {
-            inventory = inventory.concat(equation);
-            equation = [];
-            renderForge();
+            if(equation.length > 0) {
+                inventory = inventory.concat(equation);
+                equation = [];
+                renderForge();
+            }
         }
-
         function castSpell() {
             if (!equation.length) return showToast('ช่องสมการว่างเปล่า', 'กรุณานำ Rune มาประกอบกันก่อน', 'red');
             socket.emit('submitEquation', equation.map(t => t.char).join(''));
         }
 
-        function esc(s) {
-            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        }
-
-        function showToast(title, text, type) {
+        // --- Visual Effects ---
+        function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        function showToast(title, text, colorCode) {
             const t = document.getElementById('toast');
             document.getElementById('toastTitle').textContent = title;
             document.getElementById('toastText').textContent = text;
-            t.style.borderColor = type === 'red' ? 'rgba(244,63,94,0.4)' : type === 'green' ? 'rgba(16,185,129,0.4)' : type === 'gold' ? 'rgba(251,191,36,0.4)' : 'rgba(56,189,248,0.4)';
+            const colors = { red: 'rgba(244,63,94,0.5)', green: 'rgba(16,185,129,0.5)', gold: 'rgba(251,191,36,0.5)', cyan: 'rgba(56,189,248,0.5)', purple: 'rgba(139,92,246,0.5)'};
+            t.style.borderColor = colors[colorCode] || colors.cyan;
             t.classList.add('show');
             clearTimeout(showToast.tm);
-            showToast.tm = setTimeout(() => t.classList.remove('show'), 2400);
+            showToast.tm = setTimeout(() => t.classList.remove('show'), 2500);
         }
-
         function flash() {
             const f = document.getElementById('flash');
-            f.animate([{ opacity: .5 }, { opacity: 0 }], { duration: 300 });
+            f.animate([{ opacity: .6 }, { opacity: 0 }], { duration: 400 });
         }
-
         function levelUp() {
             const l = document.getElementById('levelup');
-            l.classList.add('show');
-            flash();
-            setTimeout(() => l.classList.remove('show'), 1600);
+            l.classList.add('show'); flash();
+            setTimeout(() => l.classList.remove('show'), 2000);
         }
-
         function burst(x, y, c, n) {
             for (let i = 0; i < n; i++) {
-                const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 4;
-                particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c, size: 2 + Math.random() * 2 });
+                const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 5;
+                particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c, size: 2 + Math.random() * 3 });
             }
         }
-
         function spawnFloatingText(text, x, y, color) {
-            floatingTexts.push({ text, x, y, vy: -1.2, life: 1, color });
+            floatingTexts.push({ text, x, y, vy: -1.5, life: 1, color });
         }
 
+        // --- Main Rendering (Canvas) ---
         function drawWorld() {
+            // Fill background baseline
             ctx.fillStyle = '#070a14';
             ctx.fillRect(0, 0, W, H);
             
+            // Camera follow
             camera.x = me ? me.x - W / 2 : 2000;
             camera.y = me ? me.y - H / 2 : 2000;
             camera.x = Math.max(0, Math.min(world.width - W, camera.x));
@@ -759,43 +763,82 @@ button { cursor: pointer; }
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
 
+            // Draw World Gradient
             ctx.fillStyle = cachedWorldGradient || '#0a0f20';
             ctx.fillRect(0, 0, world.width, world.height);
 
-            ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+            // Draw Infinite-feeling Grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
             ctx.lineWidth = 1;
-            for (let x = 0; x <= world.width; x += 200) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, world.height); ctx.stroke();
-            }
-            for (let y = 0; y <= world.height; y += 200) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(world.width, y); ctx.stroke();
-            }
+            ctx.beginPath();
+            // Optimize: Only draw grid lines visible in camera view
+            let startX = Math.floor(camera.x / 200) * 200;
+            let startY = Math.floor(camera.y / 200) * 200;
+            for (let x = startX; x <= camera.x + W; x += 200) { ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + H); }
+            for (let y = startY; y <= camera.y + H; y += 200) { ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + W, y); }
+            ctx.stroke();
 
-            ctx.fillStyle = '#11182d';
-            ctx.fillRect(0, 1920, 4000, 160);
-            ctx.fillRect(1920, 0, 160, 4000);
-
-            drawCastle(2000, 2000);
-            stations.forEach(s => drawStation(s));
-
-            tiles.forEach(t => {
-                ctx.fillStyle = t.type === 'num' ? '#fbbf24' : t.type === 'op' ? '#f43f5e' : '#38bdf8';
-                ctx.beginPath(); ctx.arc(t.x, t.y, 11, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#070a14';
-                ctx.font = 'bold 13px Kanit';
+            // Decorative Map Elements (Castle area)
+            ctx.fillStyle = 'rgba(17, 24, 45, 0.5)';
+            ctx.fillRect(1850, 1850, 300, 300);
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(1850, 1850, 300, 300);
+            
+            // Draw Stations
+            stations.forEach(s => {
+                const done = me?.completed >= s.id;
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = done ? 2 : 4;
+                ctx.globalAlpha = done ? 0.4 : 1;
+                // Outer ring
+                ctx.beginPath(); ctx.arc(0, 0, 55, 0, Math.PI * 2); ctx.stroke();
+                // Inner core
+                ctx.fillStyle = 'rgba(7, 10, 20, 0.8)';
+                ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+                // Text
+                ctx.fillStyle = s.color;
+                ctx.font = 'bold 20px Kanit';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(t.char, t.x, t.y + 1);
+                ctx.fillText(done ? '✓' : s.id, 0, 1);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px Kanit';
+                ctx.fillText(s.name, 0, -70);
+                ctx.restore();
             });
 
+            // Draw Runes (Tiles)
+            tiles.forEach(t => {
+                // Optimization: Cull tiles outside view
+                if (t.x < camera.x - 20 || t.x > camera.x + W + 20 || t.y < camera.y - 20 || t.y > camera.y + H + 20) return;
+                
+                ctx.fillStyle = t.type === 'num' ? '#fbbf24' : t.type === 'op' ? '#f43f5e' : '#38bdf8';
+                ctx.beginPath(); ctx.arc(t.x, t.y, 14, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(t.char, t.x, t.y + 1);
+                
+                // Glow effect
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            // Player Interpolation & Rendering
             for (let id in players) {
                 let p = players[id];
                 if (!renderPlayers[id]) {
-                    renderPlayers[id] = { x: p.x, y: p.y, name: p.name, level: p.level, avatar: p.avatar, hat: p.hat, shirt: p.shirt, pants: p.pants, shoes: p.shoes, isMoving: p.isMoving, score: p.score };
+                    // New player
+                    renderPlayers[id] = { ...p };
                 } else {
+                    // Interpolate position (lerp)
                     renderPlayers[id].x += (p.x - renderPlayers[id].x) * 0.35;
                     renderPlayers[id].y += (p.y - renderPlayers[id].y) * 0.35;
+                    // Update state instantly
                     renderPlayers[id].name = p.name;
-                    renderPlayers[id].level = p.level;
                     renderPlayers[id].avatar = p.avatar;
                     renderPlayers[id].hat = p.hat;
                     renderPlayers[id].shirt = p.shirt;
@@ -805,163 +848,158 @@ button { cursor: pointer; }
                     renderPlayers[id].score = p.score;
                 }
             }
+            // Cleanup disconnected
             for (let id in renderPlayers) {
                 if (!players[id]) delete renderPlayers[id];
             }
 
+            // Depth sorting (draw players lower on Y axis last)
             const arr = Object.values(renderPlayers).sort((a, b) => a.y - b.y);
             arr.forEach(p => drawPlayer(p, players[myId] && p.name === players[myId].name));
 
-            floatingTexts.forEach(ft => {
-                ctx.globalAlpha = Math.max(0, ft.life);
-                ctx.fillStyle = ft.color;
-                ctx.font = 'bold 14px Kanit';
-                ctx.textAlign = 'center';
-                ctx.fillText(ft.text, ft.x, ft.y);
-            });
-
+            // Particles
             particles.forEach(q => {
                 ctx.globalAlpha = Math.max(0, q.life);
                 ctx.fillStyle = q.c;
                 ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, Math.PI * 2); ctx.fill();
             });
             ctx.globalAlpha = 1;
+
+            // Floating Texts
+            floatingTexts.forEach(ft => {
+                ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 16px Kanit';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.shadowBlur = 0; // reset
+            });
+            ctx.globalAlpha = 1;
+
             ctx.restore();
         }
 
-        function drawCastle(x, y) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.fillStyle = '#10172d';
-            ctx.strokeStyle = '#8b5cf6';
-            ctx.lineWidth = 4;
-            ctx.fillRect(-300, -300, 600, 600);
-            ctx.strokeRect(-300, -300, 600, 600);
-            ctx.fillStyle = '#070a14';
-            ctx.fillRect(-200, -200, 400, 400);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(0, 0, 220, 0, Math.PI * 2); ctx.stroke();
-            
-            for (const [dx, dy] of [[-330, -330], [240, -330], [-330, 240], [240, 240]]) {
-                ctx.fillStyle = '#1a233d';
-                ctx.fillRect(dx, dy, 90, 90);
-                ctx.strokeStyle = '#475569';
-                ctx.strokeRect(dx, dy, 90, 90);
-            }
-            
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
-            ctx.fillRect(-60, 220, 120, 70);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.strokeRect(-60, 220, 120, 70);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 15px Kanit';
-            ctx.textAlign = 'center';
-            ctx.fillText('MATH DUNGEON', 0, -4);
-            ctx.restore();
-        }
-
-        function drawStation(s) {
-            const done = me?.completed >= s.id;
-            ctx.save();
-            ctx.translate(s.x, s.y);
-            ctx.strokeStyle = s.color;
-            ctx.lineWidth = done ? 3 : 4;
-            ctx.globalAlpha = done ? 0.7 : 1;
-            ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = '#070a14';
-            ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = s.color;
-            ctx.font = 'bold 18px Kanit';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(done ? '✓' : s.id, 0, 1);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 12px Kanit';
-            ctx.fillText(s.name, 0, -60);
-            ctx.restore();
-        }
-
+        // Custom Player Drawing logic based on selected fashion
         function drawPlayer(p, isMe) {
+            // Cull if completely out of view bounds
+            if (p.x < camera.x - 100 || p.x > camera.x + W + 100 || p.y < camera.y - 100 || p.y > camera.y + H + 100) return;
+
             ctx.save();
             ctx.translate(Math.round(p.x), Math.round(p.y));
-            const bob = p.isMoving ? Math.sin(Date.now() / 80) * 2 : 0;
+            
+            // Bobbing animation if moving
+            const bob = p.isMoving ? Math.sin(Date.now() / 90) * 3 : 0;
             ctx.translate(0, bob);
             
+            // Highlight self
             if (isMe) {
-                ctx.strokeStyle = '#38bdf8';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.stroke();
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+                ctx.beginPath(); ctx.ellipse(0, 24, 20, 10, 0, 0, Math.PI * 2); ctx.fill();
             }
-            
-            const shirtColors = { shirt1: '#6366f1', shirt2: '#8b5cf6', shirt3: '#06b6d4', shirt4: '#f59e0b', shirt5: '#10b981' };
-            ctx.fillStyle = shirtColors[p.shirt] || '#6366f1';
-            ctx.beginPath(); ctx.roundRect(-14, -4, 28, 16, 4); ctx.fill();
 
-            const pantsColors = { pants1: '#1e293b', pants2: '#334155', pants3: '#475569', pants4: '#0f172a', pants5: '#1e3a8a' };
-            ctx.fillStyle = pantsColors[p.pants] || '#1e293b';
-            ctx.fillRect(-12, 12, 10, 8);
-            ctx.fillRect(2, 12, 10, 8);
+            // Color Palettes
+            const skinColors = { hero: '#fde68a', wizard: '#e0e7ff', robot: '#94a3b8', rogue: '#fecaca', cleric: '#fef08a' };
+            const shirtColors = { shirt1: '#4f46e5', shirt2: '#7c3aed', shirt3: '#0891b2', shirt4: '#d97706', shirt5: '#059669' };
+            const pantsColors = { pants1: '#0f172a', pants2: '#334155', pants3: '#475569', pants4: '#1e293b', pants5: '#1e3a8a' };
+            const shoesColors = { shoes1: '#020617', shoes2: '#451a03', shoes3: '#1e293b', shoes4: '#0284c7', shoes5: '#b45309' };
 
-            const shoesColors = { shoes1: '#0f172a', shoes2: '#78350f', shoes3: '#334155', shoes4: '#38bdf8', shoes5: '#fbbf24' };
-            ctx.fillStyle = shoesColors[p.shoes] || '#0f172a';
-            ctx.fillRect(-12, 20, 9, 5);
-            ctx.fillRect(3, 20, 9, 5);
+            // Draw Pants (Legs)
+            ctx.fillStyle = pantsColors[p.pants] || '#0f172a';
+            ctx.fillRect(-12, 12, 10, 10);
+            ctx.fillRect(2, 12, 10, 10);
 
-            const skinColors = { hero: '#fde68a', wizard: '#e0e7ff', robot: '#cbd5e1', rogue: '#fecaca', cleric: '#fef08a' };
+            // Draw Shoes
+            ctx.fillStyle = shoesColors[p.shoes] || '#020617';
+            ctx.beginPath(); ctx.roundRect(-14, 20, 12, 6, 2); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(2, 20, 12, 6, 2); ctx.fill();
+
+            // Draw Shirt (Body)
+            ctx.fillStyle = shirtColors[p.shirt] || '#4f46e5';
+            ctx.beginPath(); ctx.roundRect(-16, -6, 32, 20, 6); ctx.fill();
+
+            // Draw Head (Skin)
             ctx.fillStyle = skinColors[p.avatar] || '#fde68a';
-            ctx.beginPath(); ctx.arc(0, -18, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, -20, 14, 0, Math.PI * 2); ctx.fill();
             
+            // Draw Hat
             if (p.hat === 'wizard_hat') {
-                ctx.fillStyle = '#7c3aed';
-                ctx.beginPath(); ctx.moveTo(-15, -25); ctx.lineTo(15, -25); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#6d28d9';
+                ctx.beginPath(); ctx.moveTo(-20, -26); ctx.lineTo(20, -26); ctx.lineTo(0, -52); ctx.closePath(); ctx.fill();
             } else if (p.hat === 'cap') {
-                ctx.fillStyle = '#334155';
-                ctx.beginPath(); ctx.arc(0, -22, 11, Math.PI, 0); ctx.fill();
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath(); ctx.arc(0, -24, 13, Math.PI, 0); ctx.fill();
+                ctx.fillRect(0, -24, 16, 4); // visor
             } else if (p.hat === 'crown') {
-                ctx.fillStyle = '#fbbf24';
-                ctx.beginPath(); ctx.moveTo(-12, -24); ctx.lineTo(-12, -32); ctx.lineTo(-6, -26); ctx.lineTo(0, -34); ctx.lineTo(6, -26); ctx.lineTo(12, -32); ctx.lineTo(12, -24); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath(); ctx.moveTo(-14, -26); ctx.lineTo(-14, -38); ctx.lineTo(-7, -30); ctx.lineTo(0, -40); ctx.lineTo(7, -30); ctx.lineTo(14, -38); ctx.lineTo(14, -26); ctx.closePath(); ctx.fill();
             } else if (p.hat === 'hood') {
                 ctx.fillStyle = '#0f172a';
-                ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0, true); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, -20, 16, Math.PI, 0, true); ctx.fill();
             }
             
+            // Name tag & Crown for Top Scorer
+            ctx.translate(0, -bob); // Undo bob for text
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 11px Kanit';
+            ctx.font = '600 12px Kanit';
             ctx.textAlign = 'center';
-            ctx.fillText(p.name, 0, -50);
+            ctx.fillText(p.name, 0, -56);
             
             if (p.score > 0) {
                 const top = [...Object.values(players)].sort((a, b) => b.score - a.score)[0];
                 if (top && top.name === p.name) {
                     ctx.fillStyle = '#fbbf24';
-                    ctx.font = '14px sans-serif';
-                    ctx.fillText('👑', 0, -62);
+                    ctx.font = '16px sans-serif';
+                    ctx.fillText('👑', 0, -72);
                 }
             }
             ctx.restore();
         }
 
+        // --- Mini-map Rendering ---
+        function drawMini() {
+            const w = 150, h = 56;
+            mctx.clearRect(0, 0, w, h);
+            mctx.fillStyle = 'rgba(7, 10, 20, 0.9)'; mctx.fillRect(0, 0, w, h);
+            mctx.strokeStyle = 'rgba(255,255,255,0.1)'; mctx.strokeRect(1, 1, w - 2, h - 2);
+            
+            // Map bounds represent 4000x4000
+            stations.forEach(s => {
+                mctx.fillStyle = me?.completed >= s.id ? '#10b981' : s.color;
+                mctx.beginPath(); mctx.arc(s.x / world.width * w, s.y / world.height * h, 3, 0, Math.PI * 2); mctx.fill();
+            });
+            Object.values(players).forEach(p => {
+                mctx.fillStyle = p.id === myId ? '#38bdf8' : '#64748b';
+                mctx.fillRect(p.x / world.width * w - 1.5, p.y / world.height * h - 1.5, 3, 3);
+            });
+        }
+
+        // --- Main Game Loop ---
         function update() {
             if (started && me) {
                 let dx = 0, dy = 0;
+                
+                // Joystick overrides Keyboard
                 if (joystickActive) {
                     dx = joystickVector.x;
                     dy = joystickVector.y;
                 } else {
                     dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
                     dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                    if (dx || dy) {
+                    if (dx !== 0 && dy !== 0) {
                         const l = Math.hypot(dx, dy);
                         dx /= l; dy /= l;
                     }
                 }
 
                 if (dx !== 0 || dy !== 0) {
-                    const speed = 6.5;
+                    const speed = 7;
                     me.x = Math.max(80, Math.min(world.width - 80, me.x + dx * speed));
                     me.y = Math.max(80, Math.min(world.height - 80, me.y + dy * speed));
                     me.isMoving = true;
                     
+                    // Optimization: Throttle network updates to max 25fps (40ms)
                     const now = Date.now();
                     if (now - lastSendTime > 40) {
                         socket.emit('move', { x: me.x, y: me.y, isMoving: true });
@@ -975,12 +1013,13 @@ button { cursor: pointer; }
                 }
             }
             
+            // Physics Update (Particles & Texts)
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
-                const ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.03;
+                const ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.025;
                 if (ft.life <= 0) floatingTexts.splice(i, 1);
             }
             for (let i = particles.length - 1; i >= 0; i--) {
-                const q = particles[i]; q.x += q.vx; q.y += q.vy; q.vx *= 0.92; q.vy *= 0.92; q.life -= 0.04;
+                const q = particles[i]; q.x += q.vx; q.y += q.vy; q.vx *= 0.93; q.vy *= 0.93; q.life -= 0.03;
                 if (q.life <= 0) particles.splice(i, 1);
             }
             
@@ -989,31 +1028,16 @@ button { cursor: pointer; }
             requestAnimationFrame(update);
         }
 
-        function drawMini() {
-            const w = 150, h = 56;
-            mctx.clearRect(0, 0, w, h);
-            mctx.fillStyle = '#070a14'; mctx.fillRect(0, 0, w, h);
-            mctx.strokeStyle = 'rgba(255,255,255,0.08)'; mctx.strokeRect(1, 1, w - 2, h - 2);
-            
-            stations.forEach(s => {
-                mctx.fillStyle = me?.completed >= s.id ? '#10b981' : s.color;
-                mctx.beginPath(); mctx.arc(s.x / world.width * w, s.y / world.height * h, 3, 0, Math.PI * 2); mctx.fill();
-            });
-            Object.values(players).forEach(p => {
-                mctx.fillStyle = p.id === myId ? '#fff' : '#64748b';
-                mctx.fillRect(p.x / world.width * w - 1, p.y / world.height * h - 1, 2, 2);
-            });
-        }
-
+        // Check for station proximity
         setInterval(() => {
             if (Date.now() < modalCooldown) return;
             const next = stations.find(s => s.id === (me?.completed || 0) + 1);
-            if (next && me && Math.hypot(me.x - next.x, me.y - next.y) < 130 && !document.getElementById('stationModal').classList.contains('show')) {
+            if (next && me && Math.hypot(me.x - next.x, me.y - next.y) < 140 && !document.getElementById('stationModal').classList.contains('show')) {
                 socket.emit('requestStationUnlock', { stationId: next.id });
             }
-        }, 600);
+        }, 500);
 
-        renderForge();
+        // Start Loop
         update();
     </script>
 </body>
