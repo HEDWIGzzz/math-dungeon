@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Ultimate Edition</title>
+<title>Math Dungeon Online — Custom Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -29,10 +29,7 @@ html, body {
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 
-#game {
-    position: fixed; inset: 0; width: 100%; height: 100%;
-    display: block; background: #070a14;
-}
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #070a14; }
 #vignette {
     position: fixed; inset: 0; pointer-events: none;
     background: radial-gradient(circle at center, transparent 35%, rgba(3, 5, 12, 0.75) 100%);
@@ -47,17 +44,9 @@ button { cursor: pointer; }
     backdrop-filter: blur(16px);
 }
 
-/* Top HUD */
 .top { height: 80px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
-.player-card {
-    height: 56px; min-width: 260px; border-radius: 14px;
-    padding: 8px 12px; display: flex; gap: 10px; align-items: center;
-}
-.avatar-mini {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: linear-gradient(135deg, #6366f1, #06b6d4);
-    display: grid; place-items: center; font-size: 22px;
-}
+.player-card { height: 56px; min-width: 260px; border-radius: 14px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; }
+.avatar-mini { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #06b6d4); display: grid; place-items: center; font-size: 22px; }
 .pname { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 .sub { font-size: 11px; color: #94a3b8; }
 .xpbar { width: 130px; height: 5px; background: #1e293b; border-radius: 99px; overflow: hidden; margin-top: 4px; }
@@ -69,22 +58,18 @@ button { cursor: pointer; }
 .mini canvas { width: 100%; height: 100%; display: block; }
 .mini-label { position: absolute; left: 8px; top: 4px; font-size: 9px; color: #94a3b8; background: rgba(7, 10, 20, 0.8); padding: 1px 5px; border-radius: 4px; }
 
-/* Left Quest Panel */
 .left { position: fixed; left: 16px; top: 96px; width: 275px; pointer-events: none; }
 .quest { border-radius: 16px; padding: 14px; pointer-events: auto; transition: 0.3s ease; }
 .quest-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-.quest-header:hover { opacity: 0.85; }
 .quest-body { transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease; overflow: hidden; max-height: 500px; opacity: 1; margin-top: 8px; }
 .quest.collapsed .quest-body { max-height: 0; opacity: 0; margin-top: 0; }
-
 .eyebrow { font-size: 10px; color: var(--cyan); letter-spacing: 1px; font-weight: 700; }
-.quest h2 { margin: 2px 0 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
-.quest p { margin: 0 0 8px; color: #94a3b8; font-size: 12px; line-height: 1.3; }
+.quest h2 { margin: 2px 0 0; font-size: 15px; }
+.quest p { margin: 0 0 8px; color: #94a3b8; font-size: 12px; }
 .progress { margin-top: 6px; height: 6px; background: #1e293b; border-radius: 99px; overflow: hidden; }
-.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: .4s; }
-
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); }
 .stations { margin-top: 10px; display: grid; gap: 5px; }
-.st { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px solid transparent; transition: 0.2s; }
+.st { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: rgba(255,255,255,0.02); }
 .st.active { border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.05); }
 .st.done { opacity: 0.8; }
 .dot { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: #1e293b; font-size: 11px; font-weight: bold; }
@@ -92,96 +77,47 @@ button { cursor: pointer; }
 .st b { font-size: 11px; }
 .st small { display: block; color: #64748b; font-size: 9px; }
 
-/* Right Leaderboard */
 .right { position: fixed; right: 16px; top: 96px; width: 240px; pointer-events: none; }
 .board { border-radius: 16px; padding: 12px; pointer-events: auto; }
-.board h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.5px; color: var(--gold); }
+.board h3 { margin: 0 0 6px; font-size: 13px; color: var(--gold); }
 .rank { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; }
 .rank:nth-child(2) { background: rgba(255, 255, 255, 0.03); }
 .rankno { width: 20px; color: #64748b; font-size: 11px; font-weight: bold; }
 .rankname { flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rankscore { font-size: 11px; color: var(--gold); font-weight: 700; }
 
-/* Bottom Spell Forge */
 .bottom { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(740px, calc(100% - 24px)); pointer-events: auto; }
 .forge { border-radius: 18px; padding: 10px 14px; }
 .forge-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .forge-title { font-weight: 700; font-size: 13px; }
-.forge-hint { font-size: 10px; color: #64748b; }
-
-.eq {
-    min-height: 48px; border-radius: 10px; background: #03050a;
-    border: 1px dashed #334155; display: flex; align-items: center;
-    justify-content: center; gap: 6px; padding: 6px; overflow-x: auto;
-}
-.tile {
-    min-width: 38px; height: 38px; border-radius: 8px;
-    display: grid; place-items: center; font-weight: 700; font-size: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: .12s; cursor: pointer;
-}
+.eq { min-height: 48px; border-radius: 10px; background: #03050a; border: 1px dashed #334155; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; overflow-x: auto; }
+.tile { min-width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: .12s; }
 .tile:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
 .num { background: var(--gold); color: #0f172a; }
 .op { background: var(--red); color: #fff; }
 .eqtile { background: var(--cyan); color: #0f172a; }
-
 .inv { display: flex; gap: 5px; justify-content: center; min-height: 42px; padding-top: 6px; flex-wrap: wrap; }
 .actions { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
 .btn { border: 1px solid var(--line); border-radius: 10px; padding: 7px 16px; color: white; background: #1e293b; font-weight: 700; font-size: 13px; transition: 0.2s; }
-.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
-.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; }
+.btn:hover { filter: brightness(1.15); }
 
-/* Virtual Joystick */
-.touch-controller {
-    position: fixed; left: 24px; bottom: 120px; width: 120px; height: 120px;
-    background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2);
-    border-radius: 50%; pointer-events: auto; display: none; z-index: 20;
-    backdrop-filter: blur(6px);
-}
-.joystick-thumb {
-    position: absolute; top: 28px; left: 28px; width: 64px; height: 64px;
-    background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7);
-    border-radius: 50%; pointer-events: none; border: 2px solid rgba(255,255,255,0.3);
-}
-@media (pointer: coarse) {
-    .touch-controller { display: block; }
-    .help { display: none; }
-}
+.touch-controller { position: fixed; left: 24px; bottom: 120px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2); border-radius: 50%; pointer-events: auto; display: none; z-index: 20; backdrop-filter: blur(6px); }
+.joystick-thumb { position: absolute; top: 28px; left: 28px; width: 64px; height: 64px; background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
+@media (pointer: coarse) { .touch-controller { display: block; } .help { display: none; } }
 
-/* Toast */
-.toast {
-    position: fixed; left: 50%; top: 85px; transform: translate(-50%, -15px) scale(.95);
-    opacity: 0; padding: 10px 20px; border-radius: 12px; background: rgba(12, 17, 33, 0.95);
-    border: 1px solid rgba(255,255,255,0.15); transition: .25s;
-    pointer-events: none; text-align: center; z-index: 25; backdrop-filter: blur(10px);
-}
+.toast { position: fixed; left: 50%; top: 85px; transform: translate(-50%, -15px) scale(.95); opacity: 0; padding: 10px 20px; border-radius: 12px; background: rgba(12, 17, 33, 0.95); border: 1px solid rgba(255,255,255,0.15); transition: .25s; pointer-events: none; text-align: center; z-index: 25; backdrop-filter: blur(10px); }
 .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .toast b { display: block; font-size: 14px; }
 .toast span { font-size: 11px; color: #94a3b8; }
 
-/* Modals */
-.modal {
-    position: fixed; inset: 0; background: rgba(3, 5, 12, 0.88);
-    display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px;
-    backdrop-filter: blur(10px);
-}
+.modal { position: fixed; inset: 0; background: rgba(3, 5, 12, 0.88); display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px; backdrop-filter: blur(10px); }
 .modal.show { display: flex; }
-.modalbox {
-    width: min(420px, 100%); border-radius: 20px; padding: 24px;
-    background: linear-gradient(180deg, #10172a, #070a14);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-.seal {
-    width: 60px; height: 60px; border-radius: 16px; margin: 0 auto 10px;
-    display: grid; place-items: center; font-size: 28px; background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-}
-.modal h1 { text-align: center; font-size: 22px; margin: 4px 0; }
-.modal p { text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 14px; }
-.code {
-    width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155;
-    background: #03050a; color: white; text-align: center; font-size: 22px;
-    letter-spacing: 3px; outline: none; text-transform: uppercase; font-family: 'Kanit';
-}
+.modalbox { width: min(440px, 100%); border-radius: 20px; padding: 24px; background: linear-gradient(180deg, #10172a, #070a14); border: 1px solid rgba(255, 255, 255, 0.1); max-height: 90vh; overflow-y: auto; }
+.seal { width: 50px; height: 50px; border-radius: 14px; margin: 0 auto 8px; display: grid; place-items: center; font-size: 24px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); }
+.modal h1 { text-align: center; font-size: 20px; margin: 2px 0; }
+.modal p { text-align: center; color: #94a3b8; font-size: 11px; margin-bottom: 12px; }
+.code { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155; background: #03050a; color: white; text-align: center; font-size: 20px; letter-spacing: 3px; outline: none; text-transform: uppercase; font-family: 'Kanit'; }
 .modal-actions { display: flex; gap: 8px; margin-top: 10px; }
 .modal-actions button { flex: 1; padding: 10px; }
 .close { background: #1e293b; }
@@ -189,44 +125,20 @@ button { cursor: pointer; }
 #nameModal { display: flex; }
 .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .name-grid label { font-size: 10px; color: #64748b; font-weight: 600; }
-.name-grid input, .name-grid select {
-    width: 100%; margin-top: 3px; padding: 10px; border-radius: 10px;
-    border: 1px solid #334155; background: #03050a; color: white; outline: none; font-family: 'Kanit';
-}
+.name-grid input, .name-grid select { width: 100%; margin-top: 2px; padding: 8px; border-radius: 8px; border: 1px solid #334155; background: #03050a; color: white; outline: none; font-family: 'Kanit'; font-size: 12px; }
 .full { grid-column: 1 / -1; }
-.hintbox { margin-top: 10px; background: rgba(3, 5, 10, 0.6); border: 1px solid rgba(255, 255, 255, 0.03); border-radius: 10px; padding: 8px; font-size: 10px; color: #64748b; text-align: center; }
+.hintbox { margin-top: 8px; background: rgba(3, 5, 10, 0.6); border-radius: 8px; padding: 6px; font-size: 10px; color: #64748b; text-align: center; }
 
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
-.levelup {
-    position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7);
-    opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s;
-}
+.levelup { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7); opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s; }
 .levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.levelup strong { font-size: 42px; color: var(--gold); text-shadow: 0 0 30px #fbbf24; }
-.levelup div { font-size: 16px; color: #fff; font-weight: 500; }
+.levelup strong { font-size: 40px; color: var(--gold); }
+.levelup div { font-size: 15px; color: #fff; }
 
-.help {
-    position: fixed; left: 16px; bottom: 14px; font-size: 10px; color: #64748b;
-    background: rgba(7, 10, 20, 0.8); border-radius: 8px; padding: 6px 10px; pointer-events: none; z-index: 10;
-}
+.help { position: fixed; left: 16px; bottom: 14px; font-size: 10px; color: #64748b; background: rgba(7, 10, 20, 0.8); border-radius: 8px; padding: 6px 10px; pointer-events: none; z-index: 10; }
 
-@media(max-width: 1000px) {
-    .right { display: none; }
-    .left { width: 235px; }
-    .mini { width: 140px; }
-    .player-card { min-width: 200px; }
-    .bottom { bottom: 6px; }
-}
-@media(max-width: 720px) {
-    .top { padding: 6px; }
-    .player-card { min-width: 0; flex: 1; }
-    .player-card .sub, .xpbar { display: none; }
-    .score { font-size: 13px; padding: 6px 10px; }
-    .mini { display: none; }
-    .left { left: 6px; top: 74px; width: 200px; }
-    .bottom { width: calc(100% - 12px); }
-    .tile { min-width: 34px; height: 34px; font-size: 15px; }
-}
+@media(max-width: 1000px) { .right { display: none; } .left { width: 235px; } .mini { width: 140px; } .player-card { min-width: 200px; } .bottom { bottom: 6px; } }
+@media(max-width: 720px) { .top { padding: 6px; } .player-card { min-width: 0; flex: 1; } .player-card .sub, .xpbar { display: none; } .score { font-size: 13px; padding: 6px 10px; } .mini { display: none; } .left { left: 6px; top: 74px; width: 200px; } .bottom { width: calc(100% - 12px); } }
 </style>
 </head>
 <body>
@@ -281,7 +193,6 @@ button { cursor: pointer; }
             <div class="forge glass">
                 <div class="forge-head">
                     <div class="forge-title">✨ SPELL FORGE <span class="sub">ประกอบสมการแก้โจทย์</span></div>
-                    <div class="forge-hint">คลิกไอเทมเพื่อจัดวาง</div>
                 </div>
                 <div class="eq" id="eq"></div>
                 <div class="inv" id="inv"></div>
@@ -310,35 +221,66 @@ button { cursor: pointer; }
         </div>
     </div>
 
+    <!-- Name & Customization Modal -->
     <div id="nameModal" class="modal show">
         <div class="modalbox">
             <div class="seal">🏰</div>
             <h1>Math Dungeon Online</h1>
-            <p>เกมผจญภัยห้องเรียนคณิตศาสตร์แนว Multiplayer RPG</p>
+            <p>ระบบบันทึกข้อมูลอัตโนมัติ (จำข้อมูลนาน 3 วัน)</p>
             <div class="name-grid">
                 <div class="full">
-                    <label>ชื่อผู้เล่น / ฉายา</label>
+                    <label>ชื่อผู้เล่น / ฉายา (ใช้ชื่อเดิมเพื่อกู้ข้อมูล)</label>
                     <input id="nameInput" maxlength="18" placeholder="เช่น อัศวินคณิตศาสตร์" autocomplete="off">
                 </div>
                 <div>
-                    <label>ตัวละคร</label>
+                    <label>สายตัวละคร (5 แบบ)</label>
                     <select id="avatarInput">
-                        <option value="hero">⚔️ Guardian</option>
-                        <option value="wizard">🧙 Mage</option>
-                        <option value="robot">🤖 Arcane Bot</option>
+                        <option value="hero">⚔️ 1. Guardian (นักรบ)</option>
+                        <option value="wizard">🧙 2. Mage (จอมเวท)</option>
+                        <option value="robot">🤖 3. Arcane Bot (หุ่นยนต์)</option>
+                        <option value="rogue">🗡️ 4. Rogue (โจรเงา)</option>
+                        <option value="cleric">🛡️ 5. Cleric (นักบวช)</option>
                     </select>
                 </div>
                 <div>
-                    <label>หมวก</label>
+                    <label>หมวก (5 แบบ)</label>
                     <select id="hatInput">
-                        <option value="none">ไม่มี</option>
-                        <option value="wizard_hat">หมวกเวท</option>
-                        <option value="cap">หมวกเกราะ</option>
+                        <option value="none">1. ไม่มีหมวก</option>
+                        <option value="wizard_hat">2. หมวกพ่อมด</option>
+                        <option value="cap">3. หมวกแก๊ปเกราะ</option>
+                        <option value="crown">4. มงกุฎทองคำ</option>
+                        <option value="hood">5. ฮู้ดนักฆ่า</option>
+                    </select>
+                </div>
+                <div>
+                    <label>เสื้อ (5 แบบ)</label>
+                    <select id="shirtInput">
+                        <option value="shirt1">เสื้อเกราะคลาสสิก</option>
+                        <option value="shirt2">เสื้อคลุมจอมเวท</option>
+                        <option value="shirt3">เสื้อเกราะเหล็กกล้า</option>
+                        <option value="shirt4">เสื้อนักรบโบราณ</option>
+                        <option value="shirt5">ชุดสูทเวทมนตร์</option>
+                    </select>
+                </div>
+                <div>
+                    <label>กางเกง (5 แบบ)</label>
+                    <select id="pantsInput">
+                        <option value="pants1">กางเกงผ้าฝ้าย</option>
+                        <option value="pants2">กางเกงเกราะหนัง</option>
+                        <option value="pants3">กางเกงเหล็กกล้า</option>
+                        <option value="pants4">กางเกงนักรบ</option>
+                        <option value="pants5">กางเกงเวทมนตร์</option>
                     </select>
                 </div>
                 <div class="full">
-                    <label>สีชุดเวทมนตร์</label>
-                    <input id="colorInput" type="color" value="#6366f1">
+                    <label>รองเท้า (5 แบบ)</label>
+                    <select id="shoesInput">
+                        <option value="shoes1">รองเท้าหนังธรรมดา</option>
+                        <option value="shoes2">รองเท้าบู๊ตนักเดินทาง</option>
+                        <option value="shoes3">รองเท้าเกราะเหล็ก</option>
+                        <option value="shoes4">รองเท้าเวทมนตร์ลมกรด</option>
+                        <option value="shoes5">รองเท้าทองคำศักดิ์สิทธิ์</option>
+                    </select>
                 </div>
             </div>
             <button class="btn primary" style="width:100%; margin-top:12px; padding:12px; font-size:15px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
@@ -372,8 +314,6 @@ button { cursor: pointer; }
         let joystickActive = false;
         let joystickVector = { x: 0, y: 0 };
         let questOpen = true;
-
-        // ระบบ Cooldown ป้องกันหน้าต่างเด้งรัวๆ เมื่อยังยืนทับอยู่บนแท่น
         let modalCooldown = 0;
 
         let cachedWorldGradient = null;
@@ -388,13 +328,8 @@ button { cursor: pointer; }
             questOpen = !questOpen;
             const box = document.getElementById('questBox');
             const icon = document.getElementById('questToggleIcon');
-            if (questOpen) {
-                box.classList.remove('collapsed');
-                icon.textContent = '▲';
-            } else {
-                box.classList.add('collapsed');
-                icon.textContent = '▼';
-            }
+            if (questOpen) { box.classList.remove('collapsed'); icon.textContent = '▲'; }
+            else { box.classList.add('collapsed'); icon.textContent = '▼'; }
             playSound('click');
         }
 
@@ -453,7 +388,9 @@ button { cursor: pointer; }
                 name: name,
                 avatar: document.getElementById('avatarInput').value,
                 hat: document.getElementById('hatInput').value,
-                outfitColor: document.getElementById('colorInput').value
+                shirt: document.getElementById('shirtInput').value,
+                pants: document.getElementById('pantsInput').value,
+                shoes: document.getElementById('shoesInput').value
             });
 
             const modal = document.getElementById('nameModal');
@@ -490,37 +427,17 @@ button { cursor: pointer; }
         joyZone.addEventListener('touchmove', handleJoyMove, {passive: false});
         joyZone.addEventListener('touchend', handleJoyEnd, {passive: false});
 
-        function handleJoyStart(e) {
-            e.preventDefault();
-            joystickActive = true;
-            updateJoystick(e.touches[0]);
-        }
-        function handleJoyMove(e) {
-            e.preventDefault();
-            if (joystickActive) updateJoystick(e.touches[0]);
-        }
-        function handleJoyEnd(e) {
-            e.preventDefault();
-            joystickActive = false;
-            joystickVector = { x: 0, y: 0 };
-            joyThumb.style.transform = `translate(0px, 0px)`;
-        }
+        function handleJoyStart(e) { e.preventDefault(); joystickActive = true; updateJoystick(e.touches[0]); }
+        function handleJoyMove(e) { e.preventDefault(); if (joystickActive) updateJoystick(e.touches[0]); }
+        function handleJoyEnd(e) { e.preventDefault(); joystickActive = false; joystickVector = { x: 0, y: 0 }; joyThumb.style.transform = `translate(0px, 0px)`; }
         function updateJoystick(touch) {
             const rect = joyZone.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
+            let dx = touch.clientX - (rect.left + rect.width / 2);
+            let dy = touch.clientY - (rect.top + rect.height / 2);
             let distance = Math.hypot(dx, dy);
-
-            if (distance > maxRadius) {
-                dx = (dx / distance) * maxRadius;
-                dy = (dy / distance) * maxRadius;
-            }
-
+            if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; }
             joyThumb.style.transform = `translate(${dx}px, ${dy}px)`;
-            joystickVector.x = dx / maxRadius;
-            joystickVector.y = dy / maxRadius;
+            joystickVector.x = dx / maxRadius; joystickVector.y = dy / maxRadius;
         }
 
         socket.on('initGame', d => {
@@ -533,7 +450,7 @@ button { cursor: pointer; }
         socket.on('playerReady', d => {
             me = d.player;
             updateUI();
-            showToast('ยินดีต้อนรับสู่ดันเจี้ยน', me.name + ' เริ่มต้นการผจญภัยแล้ว', 'cyan');
+            showToast('ยินดีต้อนรับสู่ดันเจี้ยน', me.name + ' เริ่มต้นการผจญภัยแล้ว (ข้อมูลจำ 3 วัน)', 'cyan');
         });
 
         socket.on('stateUpdate', p => {
@@ -562,7 +479,6 @@ button { cursor: pointer; }
             burst(t.x, t.y, '#fbbf24', 8);
             spawnFloatingText('+Rune', t.x, t.y, '#fbbf24');
             playSound('collect');
-            showToast('เก็บชิ้นส่วนสำเร็จ', 'รับ Rune เข้า Spell Forge แล้ว', 'gold');
         });
 
         socket.on('tileRemoved', id => tiles = tiles.filter(t => t.id !== id));
@@ -578,7 +494,7 @@ button { cursor: pointer; }
 
         socket.on('stationResult', r => {
             if (r.success) {
-                closeStation(); // ปิดและหน่วงเวลา
+                closeStation();
                 if (r.already) {
                     showToast('พื้นที่ถูกปลดล็อกแล้ว', 'คุณผ่านฐานนี้ไปแล้วเรียบร้อย', 'green');
                 } else {
@@ -619,10 +535,9 @@ button { cursor: pointer; }
             socket.emit('submitStationCode', { stationId: currentStation, code: document.getElementById('codeInput').value });
         }
 
-        // ฟังก์ชันใหม่: ปิดหน้าต่างแล้วติด Cooldown 3 วินาที เพื่อให้ผู้เล่นเดินออกมาได้
         function closeStation() {
             document.getElementById('stationModal').classList.remove('show');
-            modalCooldown = Date.now() + 5555;
+            modalCooldown = Date.now() + 5000;
         }
 
         function renderStations() {
@@ -649,7 +564,9 @@ button { cursor: pointer; }
             
             const xp = (me.xp % 500) / 5;
             document.getElementById('xpFill').style.width = xp + '%';
-            document.getElementById('avatarMini').textContent = me.avatar === 'wizard' ? '🧙' : me.avatar === 'robot' ? '🤖' : '⚔️';
+            
+            const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
+            document.getElementById('avatarMini').textContent = avatarIcons[me.avatar] || '🧙';
             
             const next = stations.find(s => s.id === me.completed + 1);
             document.getElementById('questTitle').textContent = next ? next.name : 'ชัยชนะสมบูรณ์แบบ!';
@@ -789,7 +706,7 @@ button { cursor: pointer; }
             for (let id in players) {
                 let p = players[id];
                 if (!renderPlayers[id]) {
-                    renderPlayers[id] = { x: p.x, y: p.y, name: p.name, level: p.level, avatar: p.avatar, hat: p.hat, outfitColor: p.outfitColor, isMoving: p.isMoving, score: p.score };
+                    renderPlayers[id] = { x: p.x, y: p.y, name: p.name, level: p.level, avatar: p.avatar, hat: p.hat, shirt: p.shirt, pants: p.pants, shoes: p.shoes, isMoving: p.isMoving, score: p.score };
                 } else {
                     renderPlayers[id].x += (p.x - renderPlayers[id].x) * 0.35;
                     renderPlayers[id].y += (p.y - renderPlayers[id].y) * 0.35;
@@ -797,7 +714,9 @@ button { cursor: pointer; }
                     renderPlayers[id].level = p.level;
                     renderPlayers[id].avatar = p.avatar;
                     renderPlayers[id].hat = p.hat;
-                    renderPlayers[id].outfitColor = p.outfitColor;
+                    renderPlayers[id].shirt = p.shirt;
+                    renderPlayers[id].pants = p.pants;
+                    renderPlayers[id].shoes = p.shoes;
                     renderPlayers[id].isMoving = p.isMoving;
                     renderPlayers[id].score = p.score;
                 }
@@ -890,33 +809,54 @@ button { cursor: pointer; }
                 ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.stroke();
             }
             
-            ctx.fillStyle = p.outfitColor || '#6366f1';
-            ctx.beginPath(); ctx.roundRect(-14, -4, 28, 26, 6); ctx.fill();
-            ctx.fillStyle = '#fde68a';
+            // สีเสื้อตามตัวเลือก (5 แบบ)
+            const shirtColors = { shirt1: '#6366f1', shirt2: '#8b5cf6', shirt3: '#06b6d4', shirt4: '#f59e0b', shirt5: '#10b981' };
+            ctx.fillStyle = shirtColors[p.shirt] || '#6366f1';
+            ctx.beginPath(); ctx.roundRect(-14, -4, 28, 16, 4); ctx.fill();
+
+            // สีและแบบกางเกง (5 แบบ)
+            const pantsColors = { pants1: '#1e293b', pants2: '#334155', pants3: '#475569', pants4: '#0f172a', pants5: '#1e3a8a' };
+            ctx.fillStyle = pantsColors[p.pants] || '#1e293b';
+            ctx.fillRect(-12, 12, 10, 8);
+            ctx.fillRect(2, 12, 10, 8);
+
+            // รองเท้า (5 แบบ)
+            const shoesColors = { shoes1: '#0f172a', shoes2: '#78350f', shoes3: '#334155', shoes4: '#38bdf8', shoes5: '#fbbf24' };
+            ctx.fillStyle = shoesColors[p.shoes] || '#0f172a';
+            ctx.fillRect(-12, 20, 9, 5);
+            ctx.fillRect(3, 20, 9, 5);
+
+            // หัวตัวละครตามสาย (5 แบบ)
+            const skinColors = { hero: '#fde68a', wizard: '#e0e7ff', robot: '#cbd5e1', rogue: '#fecaca', cleric: '#fef08a' };
+            ctx.fillStyle = skinColors[p.avatar] || '#fde68a';
             ctx.beginPath(); ctx.arc(0, -18, 12, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(-8, 18, 5, 8);
-            ctx.fillRect(3, 18, 5, 8);
             
+            // หมวก (5 แบบ)
             if (p.hat === 'wizard_hat') {
                 ctx.fillStyle = '#7c3aed';
                 ctx.beginPath(); ctx.moveTo(-15, -25); ctx.lineTo(15, -25); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
             } else if (p.hat === 'cap') {
                 ctx.fillStyle = '#334155';
                 ctx.beginPath(); ctx.arc(0, -22, 11, Math.PI, 0); ctx.fill();
+            } else if (p.hat === 'crown') {
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath(); ctx.moveTo(-12, -24); ctx.lineTo(-12, -32); ctx.lineTo(-6, -26); ctx.lineTo(0, -34); ctx.lineTo(6, -26); ctx.lineTo(12, -32); ctx.lineTo(12, -24); ctx.closePath(); ctx.fill();
+            } else if (p.hat === 'hood') {
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0, true); ctx.fill();
             }
             
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 11px Kanit';
             ctx.textAlign = 'center';
-            ctx.fillText(p.name, 0, -50);
+            ctx.fillText(p.name, 0, -52);
             
             if (p.score > 0) {
                 const top = [...Object.values(players)].sort((a, b) => b.score - a.score)[0];
                 if (top && top.name === p.name) {
                     ctx.fillStyle = '#fbbf24';
                     ctx.font = '14px sans-serif';
-                    ctx.fillText('👑', 0, -62);
+                    ctx.fillText('👑', 0, -64);
                 }
             }
             ctx.restore();
@@ -925,18 +865,12 @@ button { cursor: pointer; }
         function update() {
             if (started && me) {
                 let dx = 0, dy = 0;
-                if (joystickActive) {
-                    dx = joystickVector.x;
-                    dy = joystickVector.y;
-                } else {
+                if (joystickActive) { dx = joystickVector.x; dy = joystickVector.y; }
+                else {
                     dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
                     dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                    if (dx || dy) {
-                        const l = Math.hypot(dx, dy);
-                        dx /= l; dy /= l;
-                    }
+                    if (dx || dy) { const l = Math.hypot(dx, dy); dx /= l; dy /= l; }
                 }
-
                 if (dx !== 0 || dy !== 0) {
                     socket.emit('move', { x: me.x + dx * 6.5, y: me.y + dy * 6.5, isMoving: true });
                 } else {
@@ -945,16 +879,11 @@ button { cursor: pointer; }
             }
             
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
-                const ft = floatingTexts[i];
-                ft.y += ft.vy; ft.life -= 0.03;
+                const ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.03;
                 if (ft.life <= 0) floatingTexts.splice(i, 1);
             }
-
             for (let i = particles.length - 1; i >= 0; i--) {
-                const q = particles[i];
-                q.x += q.vx; q.y += q.vy;
-                q.vx *= 0.92; q.vy *= 0.92;
-                q.life -= 0.04;
+                const q = particles[i]; q.x += q.vx; q.y += q.vy; q.vx *= 0.92; q.vy *= 0.92; q.life -= 0.04;
                 if (q.life <= 0) particles.splice(i, 1);
             }
             
@@ -966,27 +895,21 @@ button { cursor: pointer; }
         function drawMini() {
             const w = 170, h = 56;
             mctx.clearRect(0, 0, w, h);
-            mctx.fillStyle = '#070a14';
-            mctx.fillRect(0, 0, w, h);
-            mctx.strokeStyle = 'rgba(255,255,255,0.08)';
-            mctx.strokeRect(1, 1, w - 2, h - 2);
+            mctx.fillStyle = '#070a14'; mctx.fillRect(0, 0, w, h);
+            mctx.strokeStyle = 'rgba(255,255,255,0.08)'; mctx.strokeRect(1, 1, w - 2, h - 2);
             
             stations.forEach(s => {
                 mctx.fillStyle = me?.completed >= s.id ? '#10b981' : s.color;
-                mctx.beginPath();
-                mctx.arc(s.x / world.width * w, s.y / world.height * h, 3, 0, Math.PI * 2);
-                mctx.fill();
+                mctx.beginPath(); mctx.arc(s.x / world.width * w, s.y / world.height * h, 3, 0, Math.PI * 2); mctx.fill();
             });
-            
             Object.values(players).forEach(p => {
                 mctx.fillStyle = p.id === myId ? '#fff' : '#64748b';
                 mctx.fillRect(p.x / world.width * w - 1, p.y / world.height * h - 1, 2, 2);
             });
         }
 
-        // เช็คการเข้าใกล้แท่นภารกิจ (เพิ่มการตรวจสอบ Cooldown)
         setInterval(() => {
-            if (Date.now() < modalCooldown) return; // หากติด Cooldown จะยังไม่แสดง Modal ใหม่
+            if (Date.now() < modalCooldown) return;
             const next = stations.find(s => s.id === (me?.completed || 0) + 1);
             if (next && me && Math.hypot(me.x - next.x, me.y - next.y) < 130 && !document.getElementById('stationModal').classList.contains('show')) {
                 socket.emit('requestStationUnlock', { stationId: next.id });
