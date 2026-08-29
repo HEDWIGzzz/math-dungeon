@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online — Optimized Edition</title>
+<title>Math Dungeon Online — Ultimate Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
@@ -358,7 +358,7 @@ button { cursor: pointer; }
         document.querySelector('.mini').replaceWith(mini);
         const mctx = mini.getContext('2d');
 
-        let W = innerWidth, H = innerHeight, dpr = window.devicePixelRatio > 1 ? 1.5 : 1; // จำกัด dpr เพื่อความลื่นไหลบนมือถือ/จอ Retina
+        let W = innerWidth, H = innerHeight, dpr = window.devicePixelRatio > 1 ? 1.5 : 1;
         let world = { width: 4000, height: 4000 };
         let stations = [], tiles = [], players = {};
         let renderPlayers = {};
@@ -373,7 +373,9 @@ button { cursor: pointer; }
         let joystickVector = { x: 0, y: 0 };
         let questOpen = true;
 
-        // Cache แบ็คกราวด์ Gradient เพื่อไม่ให้กินแรมและซีพียูซ้ำทุกเฟรม
+        // ระบบ Cooldown ป้องกันหน้าต่างเด้งรัวๆ เมื่อยังยืนทับอยู่บนแท่น
+        let modalCooldown = 0;
+
         let cachedWorldGradient = null;
         function updateWorldGradient() {
             cachedWorldGradient = ctx.createLinearGradient(0, 0, world.width, world.height);
@@ -576,7 +578,7 @@ button { cursor: pointer; }
 
         socket.on('stationResult', r => {
             if (r.success) {
-                document.getElementById('stationModal').classList.remove('show');
+                closeStation(); // ปิดและหน่วงเวลา
                 if (r.already) {
                     showToast('พื้นที่ถูกปลดล็อกแล้ว', 'คุณผ่านฐานนี้ไปแล้วเรียบร้อย', 'green');
                 } else {
@@ -617,8 +619,10 @@ button { cursor: pointer; }
             socket.emit('submitStationCode', { stationId: currentStation, code: document.getElementById('codeInput').value });
         }
 
+        // ฟังก์ชันใหม่: ปิดหน้าต่างแล้วติด Cooldown 3 วินาที เพื่อให้ผู้เล่นเดินออกมาได้
         function closeStation() {
             document.getElementById('stationModal').classList.remove('show');
+            modalCooldown = Date.now() + 3000;
         }
 
         function renderStations() {
@@ -742,7 +746,6 @@ button { cursor: pointer; }
             floatingTexts.push({ text, x, y, vy: -1.2, life: 1, color });
         }
 
-        // Optimized Render & Game Loop (ถอด shadowBlur ที่หนักเครื่องออกทั้งหมด)
         function drawWorld() {
             ctx.fillStyle = '#070a14';
             ctx.fillRect(0, 0, W, H);
@@ -755,11 +758,9 @@ button { cursor: pointer; }
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
 
-            // ใช้ Cached Gradient แทนการสร้างใหม่ทุกเฟรม
             ctx.fillStyle = cachedWorldGradient || '#0a0f20';
             ctx.fillRect(0, 0, world.width, world.height);
 
-            // วาดกริดพื้นหลังแบบเรียบง่ายและเร็วขึ้น
             ctx.strokeStyle = 'rgba(255,255,255,0.02)';
             ctx.lineWidth = 1;
             for (let x = 0; x <= world.width; x += 200) {
@@ -776,7 +777,6 @@ button { cursor: pointer; }
             drawCastle(2000, 2000);
             stations.forEach(s => drawStation(s));
 
-            // Runes (ไม่มี Shadow เปลืองเครื่อง)
             tiles.forEach(t => {
                 ctx.fillStyle = t.type === 'num' ? '#fbbf24' : t.type === 'op' ? '#f43f5e' : '#38bdf8';
                 ctx.beginPath(); ctx.arc(t.x, t.y, 11, 0, Math.PI * 2); ctx.fill();
@@ -786,7 +786,6 @@ button { cursor: pointer; }
                 ctx.fillText(t.char, t.x, t.y + 1);
             });
 
-            // Smooth Interpolated Players
             for (let id in players) {
                 let p = players[id];
                 if (!renderPlayers[id]) {
@@ -810,7 +809,6 @@ button { cursor: pointer; }
             const arr = Object.values(renderPlayers).sort((a, b) => a.y - b.y);
             arr.forEach(p => drawPlayer(p, players[myId] && p.name === players[myId].name));
 
-            // Floating Numbers
             floatingTexts.forEach(ft => {
                 ctx.globalAlpha = Math.max(0, ft.life);
                 ctx.fillStyle = ft.color;
@@ -819,7 +817,6 @@ button { cursor: pointer; }
                 ctx.fillText(ft.text, ft.x, ft.y);
             });
 
-            // Particles
             particles.forEach(q => {
                 ctx.globalAlpha = Math.max(0, q.life);
                 ctx.fillStyle = q.c;
@@ -987,7 +984,9 @@ button { cursor: pointer; }
             });
         }
 
+        // เช็คการเข้าใกล้แท่นภารกิจ (เพิ่มการตรวจสอบ Cooldown)
         setInterval(() => {
+            if (Date.now() < modalCooldown) return; // หากติด Cooldown จะยังไม่แสดง Modal ใหม่
             const next = stations.find(s => s.id === (me?.completed || 0) + 1);
             if (next && me && Math.hypot(me.x - next.x, me.y - next.y) < 130 && !document.getElementById('stationModal').classList.contains('show')) {
                 socket.emit('requestStationUnlock', { stationId: next.id });
