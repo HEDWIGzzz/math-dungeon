@@ -132,7 +132,6 @@ io.on('connection', (socket) => {
         p.y = clamp(y, 80, world.height - 80); 
         p.isMoving = !!data.isMoving;
 
-        // ตรวจสอบการเก็บ Rune รอบตัว (ระยะ 42 พิกเซล)
         for (let i = tiles.length - 1; i >= 0; i--) {
             const t = tiles[i];
             if (Math.hypot(t.x - p.x, t.y - p.y) < 42) {
@@ -140,7 +139,6 @@ io.on('connection', (socket) => {
                 socket.emit('tileCollected', t);
                 io.emit('tileRemoved', t.id);
 
-                // สุ่มเกิด Rune ชิ้นใหม่ทันทีเพื่อความต่อเนื่อง
                 const newT = randomTile();
                 tiles.push(newT);
                 io.emit('newTile', newT);
@@ -240,55 +238,64 @@ app.post('/api/admin/stations', (req, res) => {
     res.json({ ok: true, id: s.id, newCode: s.code });
 });
 
-// Admin Dashboard หน้าเว็บสำหรับคุณครู
-app.get('/admin', (req, res) => {
+// Admin Dashboard หน้าเว็บสำหรับคุณครู (รองรับทั้ง /admin และ /admin.html)
+const adminHtmlHandler = (req, res) => {
     res.send(`
     <!doctype html>
     <html lang="th">
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Math Dungeon - Teacher Admin Panel</title>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap');
             body { font-family: 'Kanit', sans-serif; background: #070914; color: #fff; padding: 30px; }
-            .box { background: #121a30; padding: 25px; border-radius: 16px; max-width: 600px; margin: auto; border: 1px solid rgba(255,255,255,0.1); }
+            .box { background: #121a30; padding: 25px; border-radius: 16px; max-width: 600px; margin: auto; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
             h2 { color: #f7c948; margin-top: 0; }
-            .station-row { background: #080d1a; padding: 12px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-            input { background: #1b2642; border: 1px solid #33405c; color: #fff; padding: 8px 12px; border-radius: 8px; font-family: 'Kanit'; }
-            button { background: #34d399; color: #111827; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+            .station-row { background: #080d1a; padding: 12px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
+            input { background: #1b2642; border: 1px solid #33405c; color: #fff; padding: 8px 12px; border-radius: 8px; font-family: 'Kanit'; outline: none; }
+            button { background: #34d399; color: #111827; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
             button:hover { filter: brightness(1.1); }
+            .key-box { background: #1b2642; padding: 12px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
         </style>
     </head>
     <body>
         <div class="box">
             <h2>🛡️ แผงควบคุมคุณครู (Teacher Admin)</h2>
             <p>เปลี่ยนรหัสผ่านฐานทั้ง 5 ได้ทันทีโดยไม่ต้องรีสตาร์ทเซิร์ฟเวอร์</p>
-            <div style="margin-bottom: 20px;">
-                <label>Admin Key: </label>
-                <input type="password" id="admKey" value="TEACHER-2026">
+            <div class="key-box">
+                <label><b>Admin Key:</b></label>
+                <input type="password" id="admKey" value="TEACHER-2026" style="width: 200px;">
             </div>
             <div id="stationsList">กำลังโหลดข้อมูล...</div>
         </div>
         <script>
             async function loadStations() {
                 const key = document.getElementById('admKey').value;
-                const res = await fetch('/api/admin/stations?key=' + key);
-                if(!res.ok) { document.getElementById('stationsList').innerHTML = '<p style="color:#fb7185">Admin Key ไม่ถูกต้อง</p>'; return; }
-                const data = await res.json();
-                document.getElementById('stationsList').innerHTML = data.map(s => \`
-                    <div class="station-row">
-                        <div><b>ฐานที่ \${s.id}: \${s.name}</b><br><small style="color:#8a96b0">\${s.subtitle}</small></div>
-                        <div>
-                            <input type="text" id="code_\${s.id}" value="\${s.code}" style="width: 120px;">
-                            <button onclick="updateCode(\${s.id})">บันทึก</button>
+                try {
+                    const res = await fetch('/api/admin/stations?key=' + encodeURIComponent(key));
+                    if(!res.ok) { 
+                        document.getElementById('stationsList').innerHTML = '<p style="color:#fb7185">⚠️ Admin Key ไม่ถูกต้อง</p>'; 
+                        return; 
+                    }
+                    const data = await res.json();
+                    document.getElementById('stationsList').innerHTML = data.map(s => \`
+                        <div class="station-row">
+                            <div><b>ฐานที่ \${s.id}: \${s.name}</b><br><small style="color:#8a96b0">\${s.subtitle}</small></div>
+                            <div>
+                                <input type="text" id="code_\${s.id}" value="\${s.code}" style="width: 110px;">
+                                <button onclick="updateCode(\${s.id})">บันทึก</button>
+                            </div>
                         </div>
-                    </div>
-                \`).join('');
+                    \`).join('');
+                } catch(e) {
+                    document.getElementById('stationsList').innerHTML = '<p style="color:#fb7185">เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว</p>';
+                }
             }
             async function updateCode(id) {
                 const key = document.getElementById('admKey').value;
                 const code = document.getElementById('code_' + id).value;
-                const res = await fetch('/api/admin/stations?key=' + key, {
+                const res = await fetch('/api/admin/stations?key=' + encodeURIComponent(key), {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({id, code})
@@ -303,8 +310,18 @@ app.get('/admin', (req, res) => {
     </body>
     </html>
     `);
-});
+};
+
+app.get('/admin', adminHtmlHandler);
+app.get('/admin.html', adminHtmlHandler);
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-server.listen(PORT, () => console.log(`Math Dungeon Online running on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+    console.log(`========================================`);
+    console.log(`🚀 Math Dungeon Online Running!`);
+    console.log(`🎮 Student Game: http://localhost:${PORT}`);
+    console.log(`🛡️ Teacher Admin: http://localhost:${PORT}/admin`);
+    console.log(`🔑 Admin Key: ${ADMIN_KEY}`);
+    console.log(`========================================`);
+});
