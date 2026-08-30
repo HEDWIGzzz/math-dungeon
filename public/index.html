@@ -7,84 +7,105 @@
 <script src="/socket.io/socket.io.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;900&display=swap');
-/* CSS พื้นฐานเดิม (ย่อไว้เพื่อความกระชับ) */
+/* CSS พื้นฐาน */
 :root { --bg:#05070f; --cyan:#38bdf8; --red:#f43f5e; --green:#10b981; --gold:#fbbf24; }
 * { box-sizing: border-box; font-family: 'Kanit'; user-select: none; }
-body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; }
+body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; touch-action: none; }
 #game { position: fixed; inset: 0; }
 .btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
 .btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); color: white; }
 
 /* PVP Button */
-.pvp-btn { position: fixed; right: 16px; bottom: 80px; background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; padding: 12px 20px; border-radius: 14px; font-weight: 900; font-size: 16px; border: 2px solid #fda4af; box-shadow: 0 4px 15px rgba(244,63,94,0.5); z-index: 10; cursor: pointer; }
+.pvp-btn { position: fixed; right: 16px; bottom: 80px; background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; padding: 12px 20px; border-radius: 14px; font-weight: 900; font-size: 16px; border: 2px solid #fda4af; box-shadow: 0 4px 15px rgba(244,63,94,0.5); z-index: 10; cursor: pointer; transition: 0.2s; }
+.pvp-btn:active { transform: scale(0.95); }
 
 /* BATTLE ARENA OVERLAY */
-#battleScreen { position: fixed; inset: 0; background: #070a14; z-index: 50; display: none; flex-direction: column; }
-.battle-header { text-align: center; font-size: 24px; font-weight: 900; color: var(--gold); padding: 10px; background: rgba(0,0,0,0.5); letter-spacing: 2px; }
-.arena { display: flex; justify-content: space-between; padding: 20px; flex: 1; align-items: center; }
-.fighter { width: 45%; background: rgba(30,41,59,0.7); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.1); position: relative; }
-.f-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-.bar { width: 100%; height: 20px; background: #0f172a; border-radius: 10px; overflow: hidden; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.2); }
-.hp-fill { height: 100%; background: linear-gradient(90deg, #e11d48, #f43f5e); transition: width 0.3s; }
-.en-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s; }
+#battleScreen { position: fixed; inset: 0; background: radial-gradient(circle at center, #1e293b, #070a14); z-index: 50; display: none; flex-direction: column; }
+.battle-header { text-align: center; font-size: 24px; font-weight: 900; color: var(--gold); padding: 10px; background: rgba(0,0,0,0.5); letter-spacing: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+.arena { display: flex; justify-content: space-between; padding: 20px; flex: 1; align-items: center; position: relative; }
+.fighter { width: 45%; max-width: 300px; background: rgba(15, 23, 42, 0.8); border-radius: 16px; padding: 16px; border: 2px solid rgba(255,255,255,0.1); position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.f-avatar { font-size: 40px; margin-bottom: 5px; }
+.f-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff; text-transform: uppercase; }
+.bar { width: 100%; height: 20px; background: #03050a; border-radius: 10px; overflow: hidden; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.2); }
+.hp-fill { height: 100%; background: linear-gradient(90deg, #e11d48, #f43f5e); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.en-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-.combat-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; pointer-events: none; }
-.dmg-text { font-size: 40px; font-weight: 900; color: #f43f5e; text-shadow: 0 4px 15px rgba(0,0,0,0.8); opacity: 0; transform: translateY(20px); transition: 0.3s; }
-.dmg-text.show { opacity: 1; transform: translateY(-20px); }
+/* FLOATING COMBAT TEXT CONTAINER */
+.combat-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; pointer-events: none; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fct { font-size: 32px; font-weight: 900; text-shadow: 0 4px 15px rgba(0,0,0,0.8); animation: floatUp 1s ease-out forwards; position: absolute; white-space: nowrap; }
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(20px) scale(0.8); } 20% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-40px) scale(1); } }
 
 /* BATTLE DASHBOARD */
-.battle-dash { background: #0f172a; padding: 20px; border-top: 2px solid #334155; display: flex; flex-direction: column; align-items: center; }
-.question-box { font-size: 32px; font-weight: 900; color: #fff; background: #1e293b; padding: 10px 40px; border-radius: 12px; margin-bottom: 16px; border: 2px solid var(--cyan); }
-.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 300px; }
-.num-btn { background: #334155; color: #fff; border: none; padding: 15px; font-size: 24px; font-weight: 700; border-radius: 10px; cursor: pointer; }
-.num-btn:active { background: #475569; }
-.num-btn.clear { background: #be123c; }
-.num-btn.submit { background: #059669; }
-.ans-display { font-size: 24px; letter-spacing: 4px; height: 35px; color: var(--gold); margin-bottom: 10px; }
+.battle-dash { background: #0f172a; padding: 20px; border-top: 2px solid #334155; display: flex; flex-direction: column; align-items: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+.diff-badge { background: #334155; color: var(--gold); padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; margin-bottom: -10px; z-index: 2; border: 1px solid #475569; }
+.question-box { font-size: 36px; font-weight: 900; color: #fff; background: #1e293b; padding: 15px 50px; border-radius: 12px; margin-bottom: 16px; border: 2px solid var(--cyan); text-shadow: 0 2px 10px rgba(56,189,248,0.5); }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 320px; }
+.num-btn { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 15px; font-size: 26px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.1s; }
+.num-btn:active { background: #475569; transform: scale(0.95); }
+.num-btn.clear { background: linear-gradient(135deg, #be123c, #9f1239); border-color: #f43f5e; }
+.num-btn.submit { background: linear-gradient(135deg, #059669, #047857); border-color: #10b981; }
+.ans-display { font-size: 28px; font-weight: 900; letter-spacing: 4px; height: 40px; color: var(--gold); margin-bottom: 10px; }
 
 /* Result Modal */
 #resultModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 60; display: none; place-items: center; }
-.result-box { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 2px solid var(--gold); }
-.result-title { font-size: 48px; font-weight: 900; margin: 0 0 20px 0; }
+.result-box { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 2px solid var(--gold); box-shadow: 0 0 50px rgba(251,191,36,0.2); }
+.result-title { font-size: 56px; font-weight: 900; margin: 0 0 20px 0; text-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+/* Registration Setup (ย่อโค้ดเพื่อรวมไฟล์เดียว) */
+#nameModal { position:fixed; inset:0; background:rgba(3,5,12,0.9); z-index:99; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px); }
+.modalbox { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid #334155; width: min(400px, 90%); }
+.modalbox input, .modalbox select { width: 100%; padding: 12px; margin: 8px 0 16px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-family: 'Kanit'; outline: none; }
 </style>
 </head>
 <body>
 
-    <!-- UI เดิมเบื้องต้น -->
-    <div id="nameModal" style="position:fixed;inset:0;background:#000;z-index:99;display:flex;align-items:center;justify-content:center;">
-        <div style="background:#1e293b;padding:20px;border-radius:10px;text-align:center;">
-            <h2>เข้าเกม</h2>
-            <input id="nameInput" placeholder="ชื่อ" style="padding:10px;font-size:16px;">
-            <button onclick="joinGame()" class="btn primary">เริ่มเกม</button>
+    <!-- Registration -->
+    <div id="nameModal">
+        <div class="modalbox">
+            <h2 style="margin-top:0; color:var(--cyan);">สร้างตัวละคร</h2>
+            <div style="text-align:left; font-size:12px; color:#94a3b8;">ชื่อผู้เล่น</div>
+            <input id="nameInput" placeholder="อัศวินคณิตศาสตร์" autocomplete="off">
+            <div style="text-align:left; font-size:12px; color:#94a3b8;">สายอาชีพ (ส่งผลต่อสกิล PvP)</div>
+            <select id="avatarInput">
+                <option value="hero">⚔️ Guardian (คริติคอลบ่อย)</option>
+                <option value="wizard">🧙 Mage (ดาเมจแรงขึ้น 20%)</option>
+                <option value="rogue">🗡️ Rogue (โบนัสตอบไว x1.8)</option>
+                <option value="cleric">🛡️ Cleric (ตอบถูกฮีลตัวเอง)</option>
+                <option value="robot">🤖 Arcane Bot (ลดดาเมจที่ได้รับ 20%)</option>
+            </select>
+            <button onclick="joinGame()" class="btn primary" style="width:100%; padding:14px; font-size:16px;">เริ่มผจญภัย</button>
         </div>
     </div>
 
     <!-- ปุ่มเรียก PvP -->
     <button class="pvp-btn" onclick="startMatchmaking()">⚔️ QUICK DUEL</button>
 
-    <!-- หน้าจอต่อสู้ -->
+    <!-- หน้าจอต่อสู้ RPG -->
     <div id="battleScreen">
         <div class="battle-header">🔥 MATH BATTLE 🔥</div>
         <div class="arena">
             <div class="fighter" id="myFighter">
+                <div class="f-avatar" id="myAvatarIcon">⚔️</div>
                 <div class="f-name">YOU</div>
                 <div class="bar"><div class="hp-fill" id="myHp"></div></div>
                 <div class="bar" style="height:10px;"><div class="en-fill" id="myEn"></div></div>
             </div>
             
             <div class="fighter" id="oppFighter" style="text-align:right;">
+                <div class="f-avatar" id="oppAvatarIcon">⚔️</div>
                 <div class="f-name" id="oppName">OPPONENT</div>
                 <div class="bar"><div class="hp-fill" id="oppHp"></div></div>
                 <div class="bar" style="height:10px;"><div class="en-fill" id="oppEn"></div></div>
             </div>
 
-            <div class="combat-center">
-                <div class="dmg-text" id="dmgText">-25</div>
+            <div class="combat-center" id="combatCenter">
+                <!-- Floating texts จะถูกสคริปต์ยิงเข้ามาตรงนี้ -->
             </div>
         </div>
 
         <div class="battle-dash">
-            <div class="question-box" id="battleQuestion">รอโจทย์...</div>
+            <div class="diff-badge" id="questionDiff">⭐⭐ Normal</div>
+            <div class="question-box" id="battleQuestion">รอจับคู่...</div>
             <div class="ans-display" id="ansDisplay"></div>
             <div class="numpad">
                 <button class="num-btn" onclick="typeNum(1)">1</button>
@@ -115,34 +136,39 @@ body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; }
         const socket = io();
         let myRole = '';
         let currentAns = '';
+        
+        const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
 
         function joinGame() {
-            socket.emit('setupPlayer', { name: document.getElementById('nameInput').value || 'Hero' });
+            const name = document.getElementById('nameInput').value.trim() || 'Hero';
+            const avatar = document.getElementById('avatarInput').value;
+            socket.emit('setupPlayer', { name, avatar });
             document.getElementById('nameModal').style.display = 'none';
         }
+
+        document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
 
         function startMatchmaking() {
             socket.emit('findMatch');
             document.querySelector('.pvp-btn').innerText = '⏳ SEARCHING...';
         }
 
-        // เริ่มต่อสู้
         socket.on('battleStart', data => {
             document.getElementById('battleScreen').style.display = 'flex';
             document.querySelector('.pvp-btn').style.display = 'none';
             myRole = data.me;
             
-            document.getElementById('oppName').innerText = data.opponent.name;
-            document.getElementById('myHp').style.width = '100%';
-            document.getElementById('oppHp').style.width = '100%';
-            document.getElementById('myEn').style.width = '0%';
-            document.getElementById('oppEn').style.width = '0%';
-            
-            document.getElementById('battleQuestion').innerText = data.match.question.text;
-            currentAns = ''; document.getElementById('ansDisplay').innerText = '';
+            const meData = data.match[myRole];
+            const oppData = data.opponent;
+
+            document.getElementById('oppName').innerText = oppData.name;
+            document.getElementById('myAvatarIcon').innerText = avatarIcons[meData.avatar];
+            document.getElementById('oppAvatarIcon').innerText = avatarIcons[oppData.avatar];
+
+            updateBars(data.match);
+            setQuestion(data.match.question);
         });
 
-        // Numpad Logic
         function typeNum(n) {
             if(n === 'C') currentAns = '';
             else if(currentAns.length < 5) currentAns += n;
@@ -155,41 +181,78 @@ body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; }
             currentAns = ''; document.getElementById('ansDisplay').innerText = '';
         }
 
-        // อัปเดตการโจมตี
+        function spawnCombatText(textList, isMeAttacking) {
+            const center = document.getElementById('combatCenter');
+            center.innerHTML = ''; // Clear old texts
+            
+            textList.forEach((text, i) => {
+                setTimeout(() => {
+                    const el = document.createElement('div');
+                    el.className = 'fct';
+                    el.innerText = text;
+                    
+                    // สีกำหนดจากประเภทข้อความ
+                    if(text.includes('HP')) el.style.color = isMeAttacking ? '#10b981' : '#f43f5e';
+                    else if(text.includes('CRITICAL')) el.style.color = '#fbbf24';
+                    else if(text.includes('COMBO')) el.style.color = '#f97316';
+                    else if(text.includes('FIRST')) el.style.color = '#38bdf8';
+                    else if(text.includes('MISS')) el.style.color = '#94a3b8';
+                    else el.style.color = '#fff';
+
+                    // สุ่มตำแหน่งซ้ายขวานิดหน่อยให้ดูเป็นธรรมชาติ
+                    const offsetX = (Math.random() - 0.5) * 40;
+                    el.style.left = `calc(50% + ${offsetX}px)`;
+                    
+                    center.appendChild(el);
+                }, i * 200); // ดีเลย์ข้อความให้เด้งตามลำดับ (เช่น Combo -> Crit -> Dmg)
+            });
+        }
+
+        function updateBars(match) {
+            const oppRole = myRole === 'p1' ? 'p2' : 'p1';
+            
+            // คำนวณเปอร์เซ็นต์หลอดเลือด (ระวังหาร 0)
+            const myHpPct = Math.max(0, (match[myRole].hp / match[myRole].maxHp) * 100);
+            const oppHpPct = Math.max(0, (match[oppRole].hp / match[oppRole].maxHp) * 100);
+
+            document.getElementById('myHp').style.width = myHpPct + '%';
+            document.getElementById('oppHp').style.width = oppHpPct + '%';
+            document.getElementById('myEn').style.width = match[myRole].energy + '%';
+            document.getElementById('oppEn').style.width = match[oppRole].energy + '%';
+        }
+
         socket.on('battleUpdate', data => {
             if (data.action === 'HIT') {
-                const isMeAttacking = (data.attacker === myRole);
-                const oppRole = myRole === 'p1' ? 'p2' : 'p1';
-                
-                // อัปเดตหลอดเลือด
-                document.getElementById('myHp').style.width = data.match[myRole].hp + '%';
-                document.getElementById('oppHp').style.width = data.match[oppRole].hp + '%';
-                document.getElementById('myEn').style.width = data.match[myRole].energy + '%';
-                document.getElementById('oppEn').style.width = data.match[oppRole].energy + '%';
-
-                // แสดง Damage Animation
-                const dt = document.getElementById('dmgText');
-                dt.innerText = `-${data.damage} HP`;
-                dt.style.color = isMeAttacking ? '#10b981' : '#f43f5e'; // สีเขียวถ้าเราตี สีแดงถ้าโดนตี
-                dt.classList.add('show');
-                setTimeout(() => dt.classList.remove('show'), 800);
+                updateBars(data.match);
+                spawnCombatText(data.logs, data.attacker === myRole);
             } else if (data.action === 'MISS') {
-                // เอฟเฟกต์ตอบผิด
+                spawnCombatText(data.logs, true);
                 const qb = document.getElementById('battleQuestion');
                 qb.style.borderColor = '#f43f5e';
                 setTimeout(() => qb.style.borderColor = '#38bdf8', 300);
             }
         });
 
-        socket.on('nextQuestion', q => {
+        function setQuestion(q) {
             document.getElementById('battleQuestion').innerText = q.text;
-        });
+            document.getElementById('questionDiff').innerText = q.diff;
+            // เอฟเฟกต์โจทย์ระดับตำนาน
+            if(q.diff.includes('Legendary')) {
+                document.getElementById('battleQuestion').style.boxShadow = '0 0 20px #fbbf24';
+                document.getElementById('questionDiff').style.color = '#f43f5e';
+            } else {
+                document.getElementById('battleQuestion').style.boxShadow = 'none';
+                document.getElementById('questionDiff').style.color = '#fbbf24';
+            }
+        }
+
+        socket.on('nextQuestion', q => setQuestion(q));
 
         socket.on('battleEnd', data => {
             document.getElementById('resultModal').style.display = 'grid';
             const rt = document.getElementById('resultTitle');
             rt.innerText = data.result;
-            rt.style.color = data.result === 'VICTORY' ? '#fbbf24' : '#94a3b8';
+            rt.style.color = data.result.includes('VICTORY') ? '#fbbf24' : '#94a3b8';
         });
 
         function closeBattle() {
