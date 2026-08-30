@@ -1,7 +1,7 @@
 {
-  "name": "math-pvp",
+  "name": "math-dungeon",
   "version": "1.0.0",
-  "description": "Math PvP demo",
+  "description": "Math Dungeon PvP System",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js"
@@ -11,4 +11,3 @@
     "socket.io": "^4.7.2"
   }
 }
-
