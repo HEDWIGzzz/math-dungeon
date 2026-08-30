@@ -8,10 +8,9 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/health', (req, res) => res.status(200).send('OK'));
 
-const world = { width: 4000, height: 4000 };
+// ฐานข้อมูลนักเรียนจำลอง (เก็บชื่อ, รหัสผ่าน, คะแนน, และเวลาใช้งานล่าสุด)
+let registeredStudents = {};
 
 // 10 ฐานการเรียนรู้
 const stages = [
@@ -30,115 +29,93 @@ const stages = [
 let stationCodes = {};
 stages.forEach(s => stationCodes[s.id] = s.code);
 
-const players = {};
-let matchmakingQueue = [];
-let activeBattles = {};
-let battleIdCounter = 0;
-
 io.on('connection', (socket) => {
     socket.emit('initGame', { id: socket.id, stages, stationCodes });
 
-    socket.emit('currentAdminCodes', stationCodes);
-
-    socket.setupPlayer = (data) => {
-        players[socket.id] = {
-            id: socket.id,
-            name: data.name,
-            classId: data.classId || 'mage',
-            x: 2000, y: 2000,
-            score: 0,
-            inBattle: false
-        };
-        io.emit('stateUpdate', players);
-    };
-
-    socket.on('setupPlayer', data => socket.setupPlayer(data));
-
-    socket.on('move', data => {
-        if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
+    // ระบบสมัครสมาชิก / เข้าสู่ระบบ
+    socket.on('authPlayer', data => {
+        const { name, password, classId } = data;
+        if (!name || !password) {
+            socket.emit('authResult', { success: false, msg: 'กรุณากรอกชื่อและรหัสผ่านให้ครบถ้วน' });
+            return;
         }
-    });
 
-    // Admin Codes Update
-    socket.on('updateAdminCodes', newCodes => {
-        stationCodes = newCodes;
-        stages.forEach(s => {
-            if (newCodes[s.id]) s.code = newCodes[s.id];
-        });
-        io.emit('currentAdminCodes', stationCodes);
-        console.log('Teacher updated station codes:', stationCodes);
-    });
-
-    // PvP Matchmaking
-    socket.on('findPvpMatch', () => {
-        const p = players[socket.id];
-        if (!p || p.inBattle) return;
-
-        if (!matchmakingQueue.includes(socket.id)) {
-            matchmakingQueue.push(socket.id);
-            socket.emit('pvpStatus', { msg: 'SEARCHING FOR RIVAL...' });
-
-            if (matchmakingQueue.length >= 2) {
-                const p1Id = matchmakingQueue.shift();
-                const p2Id = matchmakingQueue.shift();
-
-                const battleId = 'BATTLE_' + (++battleIdCounter);
-                activeBattles[battleId] = {
-                    id: battleId,
-                    p1: { id: p1Id, hp: 100, combo: 0 },
-                    p2: { id: p2Id, hp: 100, combo: 0 }
-                };
-
-                players[p1Id].inBattle = true;
-                players[p2Id].inBattle = true;
-
-                io.to(p1Id).emit('pvpStart', { matchId: battleId, opponent: players[p2Id], role: 'p1' });
-                io.to(p2Id).emit('pvpStart', { matchId: battleId, opponent: players[p1Id], role: 'p2' });
-            }
-        }
-    });
-
-    socket.on('submitPvpAction', data => {
-        const { matchId, damage, isCorrect } = data;
-        const battle = activeBattles[matchId];
-        if (!battle) return;
-
-        const isP1 = battle.p1.id === socket.id;
-        const attacker = isP1 ? battle.p1 : battle.p2;
-        const defender = isP1 ? battle.p2 : battle.p1;
-        const oppSocketId = defender.id;
-
-        if (isCorrect) {
-            attacker.combo++;
-            let finalDmg = damage + Math.min(30, (attacker.combo - 1) * 5);
-            defender.hp = Math.max(0, defender.hp - finalDmg);
-
-            io.to(socket.id).emit('pvpResult', { success: true, damage: finalDmg, myHp: attacker.hp, oppHp: defender.hp });
-            io.to(oppSocketId).emit('pvpResult', { success: false, damage: finalDmg, myHp: defender.hp, oppHp: attacker.hp });
-
-            if (defender.hp <= 0) {
-                io.to(socket.id).emit('pvpEnd', { win: true });
-                io.to(oppSocketId).emit('pvpEnd', { win: false });
-                players[socket.id].inBattle = false;
-                players[oppSocketId].inBattle = false;
-                delete activeBattles[matchId];
+        if (registeredStudents[name]) {
+            // เช็ครหัสผ่าน
+            if (registeredStudents[name].password === password) {
+                registeredStudents[name].lastActive = Date.now();
+                registeredStudents[name].socketId = socket.id;
+                socket.emit('authResult', { success: true, profile: registeredStudents[name] });
+            } else {
+                socket.emit('authResult', { success: false, msg: 'รหัสผ่านไม่ถูกต้อง!' });
             }
         } else {
-            attacker.combo = 0;
-            io.to(socket.id).emit('pvpResult', { success: false, damage: 0, myHp: attacker.hp, oppHp: defender.hp });
+            // สมัครบัญชีใหม่
+            registeredStudents[name] = {
+                name,
+                password,
+                classId: classId || 'mage',
+                xp: 0,
+                gold: 0,
+                completed: [],
+                lastActive: Date.now(),
+                socketId: socket.id
+            };
+            socket.emit('authResult', { success: true, profile: registeredStudents[name] });
         }
     });
 
-    socket.on('disconnect', () => {
-        matchmakingQueue = matchmakingQueue.filter(id => id !== socket.id);
-        delete players[socket.id];
-        io.emit('stateUpdate', players);
+    // อัปเดตคะแนนเมื่อผ่านด่าน
+    socket.on('updateProgress', data => {
+        const { name, xp, gold, completed } = data;
+        if (registeredStudents[name]) {
+            registeredStudents[name].xp = xp;
+            registeredStudents[name].gold = gold;
+            registeredStudents[name].completed = completed;
+            registeredStudents[name].lastActive = Date.now();
+        }
     });
-});
 
-setInterval(() => { io.emit('stateUpdate', players); }, 40);
+    // แอดมินดึงข้อมูลรายชื่อนักเรียนทั้งหมดพร้อมคำนวณวันออฟไลน์
+    socket.on('adminGetStudents', () => {
+        const now = Date.now();
+        const studentList = Object.values(registeredStudents).map(s => {
+            const diffTime = Math.abs(now - s.lastActive);
+            const offlineDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return {
+                name: s.name,
+                classId: s.classId,
+                xp: s.xp,
+                gold: s.gold,
+                offlineDays: offlineDays
+            };
+        });
+        socket.emit('adminStudentListData', studentList);
+    });
+
+    // แอดมินลบรายชื่อนักเรียน
+    socket.on('adminDeleteStudent', studentName => {
+        if (registeredStudents[studentName]) {
+            delete registeredStudents[studentName];
+            socket.emit('adminActionMsg', `ลบบัญชี ${studentName} เรียบร้อยแล้ว`);
+            // ส่งข้อมูลอัปเดตกลับไป
+            const now = Date.now();
+            const studentList = Object.values(registeredStudents).map(s => ({
+                name: s.name, classId: s.classId, xp: s.xp, gold: s.gold,
+                offlineDays: Math.floor(Math.abs(now - s.lastActive) / (1000 * 60 * 60 * 24))
+            }));
+            socket.emit('adminStudentListData', studentList);
+        }
+    });
+
+    socket.on('updateAdminCodes', newCodes => {
+        stationCodes = newCodes;
+        stages.forEach(s => { if (newCodes[s.id]) s.code = newCodes[s.id]; });
+        io.emit('currentAdminCodes', stationCodes);
+    });
+
+    socket.on('disconnect', () => {});
+});
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Math Dungeon Online running on port ${PORT}`));
