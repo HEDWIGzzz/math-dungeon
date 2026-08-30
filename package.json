@@ -1,1 +1,14 @@
+{
+  "name": "math-pvp",
+  "version": "1.0.0",
+  "description": "Math PvP demo",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}
 
