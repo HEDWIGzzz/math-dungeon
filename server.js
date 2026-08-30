@@ -14,13 +14,13 @@ app.use(express.json());
 
 const DB_FILE = path.join(__dirname, 'database.json');
 
-// โหลดฐานข้อมูลจากไฟล์ หรือสร้างใหม่ถ้ายังไม่มี
+// ระบบโหลดและบันทึกฐานข้อมูลไฟล์ JSON
 function loadDatabase() {
     if (fs.existsSync(DB_FILE)) {
         try {
             return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         } catch (e) {
-            console.error('Error reading database file, initializing empty.', e);
+            console.error('Error reading database file, resetting.', e);
         }
     }
     return { students: {}, codes: {} };
@@ -32,7 +32,7 @@ function saveDatabase(data) {
 
 let db = loadDatabase();
 
-// ฟังก์ชันเข้ารหัสรหัสผ่านด้วย Salt
+// ฟังก์ชันเข้ารหัสรหัสผ่านด้วย PBKDF2 และ Salt
 function hashPassword(password, salt = null) {
     const currentSalt = salt || crypto.randomBytes(16).toString('hex');
     const hash = crypto.pbkdf2Sync(password, currentSalt, 1000, 64, 'sha512').toString('hex');
@@ -46,19 +46,19 @@ function verifyPassword(password, hash, salt) {
 
 // 10 ฐานการเรียนรู้มาตรฐาน
 const defaultStages = [
-    { id: 1, name: "ห้องแห่งสมการ", difficulty: "Normal", code: "24", xp: 120, gold: 60 },
-    { id: 2, name: "ถ้ำพีชคณิต", difficulty: "Normal", code: "36", xp: 150, gold: 80 },
-    { id: 3, name: "หอคอยเรขาคณิต", difficulty: "Hard", code: "25", xp: 190, gold: 100 },
-    { id: 4, name: "วิหารตรีโกณมิติ", difficulty: "Hard", code: "45", xp: 230, gold: 120 },
-    { id: 5, name: "ห้องทดลองแคลคูลัส", difficulty: "Expert", code: "12", xp: 280, gold: 150 },
-    { id: 6, name: "ห้องสถิติ", difficulty: "Expert", code: "18", xp: 320, gold: 180 },
-    { id: 7, name: "เขาวงกตเวกเตอร์", difficulty: "Expert", code: "30", xp: 360, gold: 200 },
-    { id: 8, name: "ประตูแห่งฟังก์ชัน", difficulty: "Legendary", code: "64", xp: 420, gold: 240 },
-    { id: 9, name: "หอคอยอนุพันธ์", difficulty: "Legendary", code: "21", xp: 460, gold: 280 },
-    { id: 10, name: "ห้องบอส", difficulty: "Legendary", code: "42", xp: 600, gold: 500 }
+    { id: 1, name: "ห้องแห่งสมการ", difficulty: "Normal", code: "24", xp: 120, gold: 60, hint: "ย้ายค่าคงที่ไปอีกข้าง แล้วหารด้วยสัมประสิทธิ์ของ x" },
+    { id: 2, name: "ถ้ำพีชคณิต", difficulty: "Normal", code: "36", xp: 150, gold: 80, hint: "ลองแยกตัวประกอบหรือจัดกลุ่มพจน์ที่คล้ายกัน" },
+    { id: 3, name: "หอคอยเรขาคณิต", difficulty: "Hard", code: "25", xp: 190, gold: 100, hint: "พิจารณาความสัมพันธ์ของด้านและสูตรพื้นที่" },
+    { id: 4, name: "วิหารตรีโกณมิติ", difficulty: "Hard", code: "45", xp: 230, gold: 120, hint: "เลือกอัตราส่วนตรีโกณมิติให้ตรงกับด้านที่รู้" },
+    { id: 5, name: "ห้องทดลองแคลคูลัส", difficulty: "Expert", code: "12", xp: 280, gold: 150, hint: "ตรวจสอบกฎการหาอนุพันธ์พื้นฐาน" },
+    { id: 6, name: "ห้องสถิติ", difficulty: "Expert", code: "18", xp: 320, gold: 180, hint: "จัดข้อมูลก่อน แล้วเลือกสูตรหรือค่ากลางที่เหมาะสม" },
+    { id: 7, name: "เขาวงกตเวกเตอร์", difficulty: "Expert", code: "30", xp: 360, gold: 200, hint: "พิจารณาขนาดและองค์ประกอบของเวกเตอร์" },
+    { id: 8, name: "ประตูแห่งฟังก์ชัน", difficulty: "Legendary", code: "64", xp: 420, gold: 240, hint: "แทนค่าและตรวจสอบโดเมนของฟังก์ชัน" },
+    { id: 9, name: "หอคอยอนุพันธ์", difficulty: "Legendary", code: "21", xp: 460, gold: 280, hint: "ใช้กฎอนุพันธ์ที่เหมาะสมกับรูปแบบของฟังก์ชัน" },
+    { id: 10, name: "ห้องบอส", difficulty: "Legendary", code: "42", xp: 600, gold: 500, hint: "รวบรวมทักษะจากทุกฐานก่อนตัดสินใจ" }
 ];
 
-// ตั้งค่าโค้ดเริ่มต้นหากยังไม่มีใน DB
+// กำหนดค่ารหัสเริ่มต้นหากยังไม่มีใน DB
 defaultStages.forEach(s => {
     if (!db.codes[s.id]) db.codes[s.id] = s.code;
 });
@@ -67,7 +67,7 @@ saveDatabase(db);
 io.on('connection', (socket) => {
     socket.emit('initGame', { id: socket.id, stages: defaultStages, stationCodes: db.codes });
 
-    // ระบบ Authentication ที่ปลอดภัยขึ้น
+    // ระบบ Authentication (สมัครสมาชิก / เข้าสู่ระบบด้วยรหัสผ่าน)
     socket.on('authPlayer', data => {
         const { name, password, classId } = data;
         if (!name || !password) {
@@ -109,7 +109,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // อัปเดตคะแนนและบันทึกลงไฟล์ทันที
+    // อัปเดตความคืบหน้าและคะแนนของผู้เล่น
     socket.on('updateProgress', data => {
         const { name, xp, gold, completed } = data;
         if (db.students[name]) {
@@ -121,7 +121,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ดึงรายชื่อนักเรียนทั้งหมดสำหรับแดชบอร์ดคุณครู
+    // แอดมินดึงข้อมูลรายชื่อและคำนวณจำนวนวันที่ไม่ได้ออนไลน์
     socket.on('adminGetStudents', () => {
         const now = Date.now();
         const studentList = Object.values(db.students).map(s => {
@@ -138,7 +138,7 @@ io.on('connection', (socket) => {
         socket.emit('adminStudentListData', studentList);
     });
 
-    // ลบรายชื่อนักเรียน
+    // แอดมินลบรายชื่อนักเรียนออกจากระบบ
     socket.on('adminDeleteStudent', studentName => {
         if (db.students[studentName]) {
             delete db.students[studentName];
@@ -154,7 +154,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // อัปเดตโค้ดฐานจากครู
+    // ครูเปลี่ยนรหัสผ่านประจำฐาน
     socket.on('updateAdminCodes', newCodes => {
         db.codes = newCodes;
         saveDatabase(db);
