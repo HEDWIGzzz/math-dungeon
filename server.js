@@ -17,6 +17,11 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// Route สำหรับให้ระบบของ Render ทำการ Health Check
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // ==========================================
 // GAME STATE & CONFIGURATION
 // ==========================================
