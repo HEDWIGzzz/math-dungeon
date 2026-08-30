@@ -153,7 +153,6 @@ button { cursor: pointer; }
 .close { background: #1e293b; }
 
 /* Customization Grid */
-#nameModal { display: flex; }
 .name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .name-grid label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .name-grid input, .name-grid select { width: 100%; margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: rgba(3, 5, 10, 0.8); color: white; outline: none; font-family: 'Kanit'; font-size: 13px; }
@@ -513,7 +512,12 @@ button { cursor: pointer; }
             playSound('click');
             const nameInput = document.getElementById('nameInput');
             const name = nameInput.value.trim();
-            if (!name) { alert('กรุณากรอกชื่อผู้เล่นก่อนเข้าสู่ดันเจี้ยน'); nameInput.focus(); return; }
+            
+            if (!name) { 
+                alert('กรุณากรอกชื่อผู้เล่นก่อนเข้าสู่ดันเจี้ยน'); 
+                nameInput.focus(); 
+                return; 
+            }
 
             socket.emit('setupPlayer', {
                 name: name,
@@ -524,13 +528,21 @@ button { cursor: pointer; }
                 shoes: document.getElementById('shoesInput').value
             });
 
-            document.getElementById('nameModal').classList.remove('show');
+            // บังคับซ่อนหน้าต่าง
+            const modal = document.getElementById('nameModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none'; 
+            
             started = true;
             
-            // Audio context requires user interaction to fully unlock
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
+
+        // รองรับการกดปุ่ม Enter เพื่อเข้าเกม
+        document.getElementById('nameInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') joinGame();
+        });
 
         let questOpen = true;
         function toggleQuest() {
