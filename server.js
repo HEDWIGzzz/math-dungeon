@@ -2,18 +2,50 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
-// ฐานข้อมูลนักเรียนจำลอง (เก็บชื่อ, รหัสผ่าน, คะแนน, และเวลาใช้งานล่าสุด)
-let registeredStudents = {};
+const DB_FILE = path.join(__dirname, 'database.json');
 
-// 10 ฐานการเรียนรู้
-const stages = [
+// โหลดฐานข้อมูลจากไฟล์ หรือสร้างใหม่ถ้ายังไม่มี
+function loadDatabase() {
+    if (fs.existsSync(DB_FILE)) {
+        try {
+            return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+        } catch (e) {
+            console.error('Error reading database file, initializing empty.', e);
+        }
+    }
+    return { students: {}, codes: {} };
+}
+
+function saveDatabase(data) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+let db = loadDatabase();
+
+// ฟังก์ชันเข้ารหัสรหัสผ่านด้วย Salt
+function hashPassword(password, salt = null) {
+    const currentSalt = salt || crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, currentSalt, 1000, 64, 'sha512').toString('hex');
+    return { hash, salt: currentSalt };
+}
+
+function verifyPassword(password, hash, salt) {
+    const testHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return testHash === hash;
+}
+
+// 10 ฐานการเรียนรู้มาตรฐาน
+const defaultStages = [
     { id: 1, name: "ห้องแห่งสมการ", difficulty: "Normal", code: "24", xp: 120, gold: 60 },
     { id: 2, name: "ถ้ำพีชคณิต", difficulty: "Normal", code: "36", xp: 150, gold: 80 },
     { id: 3, name: "หอคอยเรขาคณิต", difficulty: "Hard", code: "25", xp: 190, gold: 100 },
@@ -26,13 +58,16 @@ const stages = [
     { id: 10, name: "ห้องบอส", difficulty: "Legendary", code: "42", xp: 600, gold: 500 }
 ];
 
-let stationCodes = {};
-stages.forEach(s => stationCodes[s.id] = s.code);
+// ตั้งค่าโค้ดเริ่มต้นหากยังไม่มีใน DB
+defaultStages.forEach(s => {
+    if (!db.codes[s.id]) db.codes[s.id] = s.code;
+});
+saveDatabase(db);
 
 io.on('connection', (socket) => {
-    socket.emit('initGame', { id: socket.id, stages, stationCodes });
+    socket.emit('initGame', { id: socket.id, stages: defaultStages, stationCodes: db.codes });
 
-    // ระบบสมัครสมาชิก / เข้าสู่ระบบ
+    // ระบบ Authentication ที่ปลอดภัยขึ้น
     socket.on('authPlayer', data => {
         const { name, password, classId } = data;
         if (!name || !password) {
@@ -40,47 +75,57 @@ io.on('connection', (socket) => {
             return;
         }
 
-        if (registeredStudents[name]) {
-            // เช็ครหัสผ่าน
-            if (registeredStudents[name].password === password) {
-                registeredStudents[name].lastActive = Date.now();
-                registeredStudents[name].socketId = socket.id;
-                socket.emit('authResult', { success: true, profile: registeredStudents[name] });
+        const trimmedName = name.trim();
+
+        if (db.students[trimmedName]) {
+            const student = db.students[trimmedName];
+            if (verifyPassword(password, student.hash, student.salt)) {
+                student.lastActive = Date.now();
+                saveDatabase(db);
+                socket.emit('authResult', { 
+                    success: true, 
+                    profile: { name: student.name, classId: student.classId, xp: student.xp, gold: student.gold, completed: student.completed } 
+                });
             } else {
                 socket.emit('authResult', { success: false, msg: 'รหัสผ่านไม่ถูกต้อง!' });
             }
         } else {
-            // สมัครบัญชีใหม่
-            registeredStudents[name] = {
-                name,
-                password,
+            const { hash, salt } = hashPassword(password);
+            db.students[trimmedName] = {
+                name: trimmedName,
+                hash,
+                salt,
                 classId: classId || 'mage',
                 xp: 0,
                 gold: 0,
                 completed: [],
-                lastActive: Date.now(),
-                socketId: socket.id
+                lastActive: Date.now()
             };
-            socket.emit('authResult', { success: true, profile: registeredStudents[name] });
+            saveDatabase(db);
+            socket.emit('authResult', { 
+                success: true, 
+                profile: { name: trimmedName, classId: classId || 'mage', xp: 0, gold: 0, completed: [] } 
+            });
         }
     });
 
-    // อัปเดตคะแนนเมื่อผ่านด่าน
+    // อัปเดตคะแนนและบันทึกลงไฟล์ทันที
     socket.on('updateProgress', data => {
         const { name, xp, gold, completed } = data;
-        if (registeredStudents[name]) {
-            registeredStudents[name].xp = xp;
-            registeredStudents[name].gold = gold;
-            registeredStudents[name].completed = completed;
-            registeredStudents[name].lastActive = Date.now();
+        if (db.students[name]) {
+            db.students[name].xp = xp;
+            db.students[name].gold = gold;
+            db.students[name].completed = completed;
+            db.students[name].lastActive = Date.now();
+            saveDatabase(db);
         }
     });
 
-    // แอดมินดึงข้อมูลรายชื่อนักเรียนทั้งหมดพร้อมคำนวณวันออฟไลน์
+    // ดึงรายชื่อนักเรียนทั้งหมดสำหรับแดชบอร์ดคุณครู
     socket.on('adminGetStudents', () => {
         const now = Date.now();
-        const studentList = Object.values(registeredStudents).map(s => {
-            const diffTime = Math.abs(now - s.lastActive);
+        const studentList = Object.values(db.students).map(s => {
+            const diffTime = Math.abs(now - (s.lastActive || now));
             const offlineDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             return {
                 name: s.name,
@@ -93,29 +138,29 @@ io.on('connection', (socket) => {
         socket.emit('adminStudentListData', studentList);
     });
 
-    // แอดมินลบรายชื่อนักเรียน
+    // ลบรายชื่อนักเรียน
     socket.on('adminDeleteStudent', studentName => {
-        if (registeredStudents[studentName]) {
-            delete registeredStudents[studentName];
+        if (db.students[studentName]) {
+            delete db.students[studentName];
+            saveDatabase(db);
             socket.emit('adminActionMsg', `ลบบัญชี ${studentName} เรียบร้อยแล้ว`);
-            // ส่งข้อมูลอัปเดตกลับไป
+            
             const now = Date.now();
-            const studentList = Object.values(registeredStudents).map(s => ({
+            const studentList = Object.values(db.students).map(s => ({
                 name: s.name, classId: s.classId, xp: s.xp, gold: s.gold,
-                offlineDays: Math.floor(Math.abs(now - s.lastActive) / (1000 * 60 * 60 * 24))
+                offlineDays: Math.floor(Math.abs(now - (s.lastActive || now)) / (1000 * 60 * 60 * 24))
             }));
             socket.emit('adminStudentListData', studentList);
         }
     });
 
+    // อัปเดตโค้ดฐานจากครู
     socket.on('updateAdminCodes', newCodes => {
-        stationCodes = newCodes;
-        stages.forEach(s => { if (newCodes[s.id]) s.code = newCodes[s.id]; });
-        io.emit('currentAdminCodes', stationCodes);
+        db.codes = newCodes;
+        saveDatabase(db);
+        io.emit('currentAdminCodes', db.codes);
     });
-
-    socket.on('disconnect', () => {});
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Math Dungeon Online running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Secure Math Dungeon Server running on port ${PORT}`));
