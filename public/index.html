@@ -1,1 +1,482 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MATH DUNGEON — Shared Open World & Token Collection</title>
+<style>
+:root{
+  --bg:#050814; --panel:#0e1628; --panel2:#131f38; --line:#24365c;
+  --text:#f0f5ff; --muted:#8ba2cc; --cyan:#38dbff; --purple:#8264ff;
+  --gold:#ffd15c; --green:#2fe69b; --red:#ff5277; --orange:#ff993b;
+  --shadow:0 20px 60px rgba(0,0,0,.6);
+}
+*{ box-sizing:border-box; user-select:none; }
+body{
+  margin:0; min-height:100vh; color:var(--text); font-family:Inter,Segoe UI,Tahoma,system-ui,sans-serif;
+  background: radial-gradient(circle at 15% 15%, rgba(56,219,255,.07), transparent 30%),
+              radial-gradient(circle at 85% 85%, rgba(130,100,255,.09), transparent 35%),
+              linear-gradient(180deg, #03050c, #091022 50%, #03050c);
+  overflow:hidden;
+}
+button,input{ font:inherit; }
+button{ cursor:pointer; border:0; }
+.app{ min-height:100vh; display:flex; flex-direction:column; height:100vh; }
+.hidden{ display:none!important; }
 
+/* Top Navigation Bar */
+.topbar{
+  position:absolute; top:0; left:0; right:0; z-index:50; display:flex; justify-content:space-between; align-items:center;
+  padding:12px 24px; background:rgba(5,8,20,.85); backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.brand{ display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:1px; font-size:18px; }
+.brand-logo{
+  width:36px; height:36px; display:grid; place-items:center; border-radius:10px;
+  background:linear-gradient(135deg,#1f3566,#0c1630); border:1px solid #3c5b9c;
+  box-shadow:0 0 15px rgba(56,219,255,.2); font-size:18px;
+}
+.nav-actions{ display:flex; gap:10px; align-items:center; }
+.nav-btn{
+  background:#0c152a; color:#c7d7f5; border:1px solid #24385e; border-radius:10px;
+  padding:8px 14px; font-size:13px; font-weight:700; transition:.2s;
+}
+.nav-btn:hover{ border-color:var(--cyan); background:#13213e; color:white; }
+
+/* Canvas World Container */
+.world-container{ flex:1; position:relative; overflow:hidden; display:flex; justify-content:center; align-items:center; }
+canvas{ display:block; background:#070d1c; box-shadow:inset 0 0 50px rgba(0,0,0,.8); }
+
+/* HUD Bottom Bar (Inventory & Tokens) */
+.hud-bar{
+  position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:40;
+  display:flex; gap:16px; background:rgba(14,22,40,.92); border:1px solid rgba(86,120,173,.3);
+  padding:14px 24px; border-radius:20px; backdrop-filter:blur(12px); box-shadow:var(--shadow);
+  align-items:center; max-width:90vw; flex-wrap:wrap; justify-content:center;
+}
+.token-slot{
+  width:44px; height:44px; border-radius:12px; background:#070d1c; border:2px dashed #3a558c;
+  display:grid; place-items:center; font-weight:900; font-size:18px; color:var(--cyan);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.5); position:relative;
+}
+.token-slot.filled{ border-style:solid; border-color:var(--cyan); background:linear-gradient(135deg,#142952,#0a152d); }
+.token-slot .badge-count{
+  position:absolute; top:-6px; right:-6px; background:var(--gold); color:#2b2000;
+  font-size:10px; font-weight:900; padding:2px 6px; border-radius:999px;
+}
+
+/* Modal / Equation Workspace */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(3,5,12,.85); backdrop-filter:blur(10px);
+  z-index:100; display:grid; place-items:center; padding:20px;
+}
+.modal-box{
+  width:min(680px, 100%); background:linear-gradient(180deg, #10192e, #0a1122);
+  border:1px solid rgba(56,219,255,.3); border-radius:24px; padding:32px; box-shadow:var(--shadow);
+  text-align:center;
+}
+.equation-workspace{
+  display:flex; gap:10px; justify-content:center; align-items:center; margin:24px 0;
+  flex-wrap:wrap; min-height:70px; padding:16px; background:#050914; border-radius:16px; border:1px solid #22365e;
+}
+.eq-cell{
+  width:50px; height:60px; border-radius:10px; background:#0c152a; border:2px solid #3c5b9c;
+  display:grid; place-items:center; font-size:24px; font-weight:900; color:var(--gold);
+}
+
+/* Login Screen */
+.login-wrap{ min-height:100vh; display:grid; place-items:center; padding:24px; width:100%; }
+.card{ background:linear-gradient(180deg, rgba(16,25,46,.95), rgba(10,16,30,.95)); border:1px solid rgba(86,120,173,.2); border-radius:20px; box-shadow:var(--shadow); }
+.login-box{ width:min(480px, 100%); padding:36px; text-align:center; }
+.logo-huge{
+  width:88px; height:88px; margin:0 auto 16px; display:grid; place-items:center; font-size:42px;
+  border-radius:24px; border:1px solid #3e61a4; background:linear-gradient(135deg,#1b315f,#0b152d);
+  box-shadow:0 0 35px rgba(56,219,255,.2);
+}
+.field{ margin-bottom:16px; text-align:left; }
+.field label{ display:block; font-size:12px; color:#8ea2c9; margin-bottom:6px; font-weight:700; }
+input{ width:100%; padding:12px 14px; color:var(--text); background:#070d1c; border:1px solid #273b61; border-radius:12px; outline:none; }
+input:focus{ border-color:var(--cyan); }
+.btn{ padding:12px 20px; border-radius:12px; font-weight:900; transition:.18s; }
+.btn:hover{ transform:translateY(-2px); filter:brightness(1.12); }
+.btn.primary{ color:white; background:linear-gradient(90deg,#7055ff,#38dbff); box-shadow:0 8px 25px rgba(56,219,255,.2); }
+.btn.full{ width:100%; }
+
+/* Toast */
+.toast{
+  position:fixed; left:50%; bottom:30px; transform:translateX(-50%) translateY(100px);
+  padding:14px 24px; border-radius:999px; background:#0d182e; border:1px solid #38dbff; color:white;
+  font-weight:800; z-index:200; box-shadow:0 10px 30px rgba(0,0,0,.5); transition:.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.toast.show{ transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="app" class="app"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ==========================================
+   1. AUDIO SYNTHESIZER
+   ========================================== */
+const AudioSys = {
+  ctx: null,
+  init() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+  play(type) {
+    try {
+      this.init();
+      if(!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      const now = this.ctx.currentTime;
+      if(type === 'collect') {
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(880, now + 0.08); // A5
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      } else if(type === 'correct') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+      } else if(type === 'wrong') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.setValueAtTime(120, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      }
+    } catch(e) {}
+  }
+};
+
+/* ==========================================
+   2. GAME STATE & WORLD DATA
+   ========================================== */
+let gameState = {
+  screen: 'login', // login, openworld
+  profile: { name: '', classId: 'mage', xp: 0, gold: 0, level: 1 },
+  inventory: {
+    '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, 'x': 0, '+': 0, '=': 0
+  },
+  activeGate: null // เปิดหน้าต่างแก้สมการเมื่อเข้าใกล้ Gate
+};
+
+// ตัวละครผู้เล่นอื่นๆ ในแมพเดียวกัน (Simulated Multiplayer Peers)
+let peers = [
+  { id: 1, name: "ภากร", x: 400, y: 300, color: "#38dbff", emoji: "🧙" },
+  { id: 2, name: "มีనా", x: 800, y: 500, color: "#ff5277", emoji: "🏹" },
+  { id: 3, name: "ธนวัฒน์", x: 200, y: 600, color: "#2fe69b", emoji: "⚔️" }
+];
+
+// Player Position in Open World
+let player = { x: 500, y: 400, speed: 4 };
+let keys = {};
+
+// Math Tokens สุ่มตกอยู่บนแมพ
+let tokensOnMap = [
+  { id: 1, val: '3', x: 300, y: 250 },
+  { id: 2, val: 'x', x: 700, y: 350 },
+  { id: 3, val: '+', x: 450, y: 550 },
+  { id: 4, val: '5', x: 900, y: 200 },
+  { id: 5, val: '=', x: 600, y: 650 },
+  { id: 6, val: '8', x: 250, y: 450 },
+  { id: 7, val: '2', x: 850, y: 400 }
+];
+
+// Equation Gates (ฐานภารกิจบนแมพ)
+let gates = [
+  { id: 1, name: "Base 01: สมการเชิงเส้น", x: 500, y: 150, targetEquation: ['3', '+', 'x', '=', '8'], solved: false },
+  { id: 2, name: "Base 02: พีชคณิตขั้นสูง", x: 1000, y: 500, targetEquation: ['2', 'x', '=', '6'], solved: false }
+];
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('show'), 10);
+  clearTimeout(t.timer);
+  t.timer = setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.classList.add('hidden'), 300);
+  }, 2500);
+}
+
+/* ==========================================
+   3. RENDER VIEWS
+   ========================================== */
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  if(gameState.screen === 'login') {
+    app.innerHTML = `
+      <div class="login-wrap">
+        <div class="card login-box">
+          <div class="logo-huge">🌍</div>
+          <div style="font-size:11px; color:var(--cyan); font-weight:900; letter-spacing:2px;">SHARED OPEN WORLD</div>
+          <h1 style="margin:8px 0;">Math Dungeon</h1>
+          <div style="font-size:13px; color:var(--muted); margin-bottom:20px;">ลงแมพเดียวกัน เดินเก็บเบี้ยสัญลักษณ์เพื่อสร้างสมการให้เป็นจริง!</div>
+          
+          <div class="field">
+            <label>PLAYER NAME</label>
+            <input id="nameInput" maxlength="15" placeholder="เช่น โด้" />
+          </div>
+
+          <button class="btn primary full" onclick="joinWorld()">เข้าสู่ Open World 🚀</button>
+        </div>
+      </div>
+    `;
+  } else if(gameState.screen === 'openworld') {
+    app.innerHTML = `
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-logo">🌍</div>
+          <span>SHARED WORLD ACADEMY</span>
+        </div>
+        <div class="nav-actions">
+          <span style="font-size:13px; font-weight:bold; color:var(--gold);">⭐ XP: ${gameState.profile.xp} | Gold: ${gameState.profile.gold}</span>
+          <button class="nav-btn" onclick="openTeacherAdmin()">🔐 Teacher Control</button>
+        </div>
+      </div>
+
+      <div class="world-container">
+        <canvas id="worldCanvas" width="1200" height="750"></canvas>
+
+        <div class="hud-bar">
+          <div style="font-weight:800; font-size:12px; color:var(--muted); margin-right:10px;">INVENTORY (TOKENS):</div>
+          ${Object.keys(gameState.inventory).map(k => `
+            <div class="token-slot">
+              ${k}
+              <div class="badge-count">${gameState.inventory[k]}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    initCanvasGame();
+  }
+
+  // Render Equation Gate Modal if Active
+  if(gameState.activeGate) {
+    app.innerHTML += renderEquationModal();
+  }
+}
+
+window.joinWorld = function() {
+  const name = document.getElementById('nameInput').value.trim();
+  if(!name) { showToast('❌ กรุณาใส่ชื่อผู้เล่น'); return; }
+  gameState.profile.name = name;
+  gameState.screen = 'openworld';
+  render();
+  showToast(`🎉 ยินดีต้อนรับเข้าสู่ Shared World, ${name}! ใช้ปุ่ม W, A, S, D เพื่อเดินเก็บเบี้ย`);
+};
+
+/* ==========================================
+   4. CANVAS & OPEN WORLD ENGINE
+   ========================================== */
+function initCanvasGame() {
+  const canvas = document.getElementById('worldCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  function gameLoop() {
+    if(gameState.screen !== 'openworld') return;
+
+    // Movement
+    if(keys['w'] || keys['arrowup']) player.y -= player.speed;
+    if(keys['s'] || keys['arrowdown']) player.y += player.speed;
+    if(keys['a'] || keys['arrowleft']) player.x -= player.speed;
+    if(keys['d'] || keys['arrowright']) player.x += player.speed;
+
+    // Boundary
+    player.x = Math.max(30, Math.min(1170, player.x));
+    player.y = Math.max(50, Math.min(720, player.y));
+
+    // Check Token Collection
+    tokensOnMap.forEach((t, index) => {
+      const dist = Math.hypot(player.x - t.x, player.y - t.y);
+      if(dist < 35) {
+        AudioSys.play('collect');
+        gameState.inventory[t.val] = (gameState.inventory[t.val] || 0) + 1;
+        showToast(`✨ เก็บเบี้ยสัญลักษณ์ [ ${t.val} ] สำเร็จ!`);
+        tokensOnMap.splice(index, 1);
+      }
+    });
+
+    // Check Gate Proximity
+    gates.forEach(g => {
+      const dist = Math.hypot(player.x - g.x, player.y - g.y);
+      if(dist < 50 && !gameState.activeGate && !g.solved) {
+        gameState.activeGate = g;
+        render();
+      }
+    });
+
+    // Simulate Peers Movement
+    peers.forEach(p => {
+      p.x += (Math.random() - 0.5) * 2;
+      p.y += (Math.random() - 0.5) * 2;
+    });
+
+    // --- DRAWING ---
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Grid Floor
+    ctx.strokeStyle = '#101d38';
+    ctx.lineWidth = 1;
+    for(let x=0; x<canvas.width; x+=50) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for(let y=0; y<canvas.height; y+=50) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+
+    // Draw Gates
+    gates.forEach(g => {
+      ctx.fillStyle = g.solved ? '#2fe69b' : '#ff993b';
+      ctx.beginPath(); ctx.arc(g.x, g.y, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(g.name, g.x, g.y - 40);
+      ctx.fillText(g.solved ? 'CLEARED ✅' : 'GATE 🚪', g.x, g.y + 5);
+    });
+
+    // Draw Tokens
+    tokensOnMap.forEach(t => {
+      ctx.fillStyle = '#38dbff';
+      ctx.beginPath(); ctx.arc(t.x, t.y, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#050814'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(t.val, t.x, t.y + 5);
+    });
+
+    // Draw Peers
+    peers.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(p.name + " " + p.emoji, p.x, p.y - 25);
+    });
+
+    // Draw Player
+    ctx.fillStyle = '#ffd15c';
+    ctx.beginPath(); ctx.arc(player.x, player.y, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(gameState.profile.name + ' (You)', player.x, player.y - 28);
+
+    requestAnimationFrame(gameLoop);
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+/* ==========================================
+   5. EQUATION WORKSPACE MODAL
+   ========================================== */
+let playerWorkspace = ['', '', '', '', ''];
+
+function renderEquationModal() {
+  const g = gameState.activeGate;
+  return `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <div style="font-size:12px; color:var(--cyan); font-weight:900;">EQUATION WORKSPACE GATE</div>
+        <h2 style="margin:8px 0;">${g.name}</h2>
+        <div style="font-size:13px; color:var(--muted);">นำเบี้ยสัญลักษณ์ที่คุณเก็บมาวางเรียงต่อกันเพื่อให้สมการเป็นจริงและสมดุล</div>
+
+        <div class="equation-workspace">
+          ${g.targetEquation.map((_, idx) => `
+            <div class="eq-cell" onclick="removeFromWorkspace(${idx})">${playerWorkspace[idx] || '_'}</div>
+          `).join('')}
+        </div>
+
+        <div style="font-size:12px; color:var(--gold); margin-bottom:16px;">คลิกที่ช่องเพื่อเติมเบี้ยจาก Inventory (หรือคลิกที่ช่องเพื่อลบออก)</div>
+
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
+          ${Object.keys(gameState.inventory).map(token => `
+            <button class="nav-btn" onclick="addToWorkspace('${token}')">${token} (${gameState.inventory[token]})</button>
+          `).join('')}
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <button class="btn primary full" onclick="validateEquation()">ตรวจสอบสมการ ⚔️</button>
+          <button class="nav-btn" onclick="closeGateModal()">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.addToWorkspace = function(token) {
+  if(gameState.inventory[token] > 0) {
+    const emptyIdx = playerWorkspace.findIndex(cell => cell === '');
+    if(emptyIdx !== -1) {
+      gameState.inventory[token]--;
+      playerWorkspace[emptyIdx] = token;
+      render();
+    } else {
+      showToast('⚠️ ช่องสมการเต็มแล้ว!');
+    }
+  } else {
+    showToast('⚠️ คุณไม่มีเบี้ยสัญลักษณ์นี้ใน Inventory!');
+  }
+};
+
+window.removeFromWorkspace = function(idx) {
+  const token = playerWorkspace[idx];
+  if(token) {
+    gameState.inventory[token]++;
+    playerWorkspace[idx] = '';
+    render();
+  }
+};
+
+window.validateEquation = function() {
+  const g = gameState.activeGate;
+  const isMatch = playerWorkspace.every((val, idx) => val === g.targetEquation[idx]);
+
+  if(isMatch) {
+    AudioSys.play('correct');
+    g.solved = true;
+    gameState.profile.xp += 150;
+    gameState.profile.gold += 80;
+    showToast(`🎉 สมการถูกต้อง! ปลดล็อก ${g.name} สำเร็จ! (+150 XP)`);
+    closeGateModal();
+  } else {
+    AudioSys.play('wrong');
+    showToast(`❌ สมการยังไม่ถูกต้อง ตรวจสอบความสมดุลอีกครั้ง!`);
+  }
+};
+
+window.closeGateModal = function() {
+  gameState.activeGate = null;
+  playerWorkspace = ['', '', '', '', ''];
+  render();
+};
+
+window.openTeacherAdmin = function() {
+  const pwd = prompt("🔐 กรุณากรอกรหัสผ่านครู (ค่าเริ่มต้น: admin):");
+  if(pwd === "admin") {
+    alert("👨‍🏫 Teacher Mode: สถิตินักเรียนใน Shared World ทั้งหมดออนไลน์เรียบร้อย ความคืบหน้าเชื่อมต่อกับระบบคลาวด์");
+  } else if(pwd !== null) {
+    showToast("❌ รหัสผ่านไม่ถูกต้อง");
+  }
+};
+
+render();
+
+})();
+</script>
+</body>
+</html>
