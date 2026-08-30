@@ -1,267 +1,424 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon PvP Edition</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MATH DUNGEON — Classroom RPG Online</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;900&display=swap');
-/* CSS พื้นฐาน */
-:root { --bg:#05070f; --cyan:#38bdf8; --red:#f43f5e; --green:#10b981; --gold:#fbbf24; }
-* { box-sizing: border-box; font-family: 'Kanit'; user-select: none; }
-body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; touch-action: none; }
-#game { position: fixed; inset: 0; }
-.btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); color: white; }
-
-/* PVP Button */
-.pvp-btn { position: fixed; right: 16px; bottom: 80px; background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; padding: 12px 20px; border-radius: 14px; font-weight: 900; font-size: 16px; border: 2px solid #fda4af; box-shadow: 0 4px 15px rgba(244,63,94,0.5); z-index: 10; cursor: pointer; transition: 0.2s; }
-.pvp-btn:active { transform: scale(0.95); }
-
-/* BATTLE ARENA OVERLAY */
-#battleScreen { position: fixed; inset: 0; background: radial-gradient(circle at center, #1e293b, #070a14); z-index: 50; display: none; flex-direction: column; }
-.battle-header { text-align: center; font-size: 24px; font-weight: 900; color: var(--gold); padding: 10px; background: rgba(0,0,0,0.5); letter-spacing: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-.arena { display: flex; justify-content: space-between; padding: 20px; flex: 1; align-items: center; position: relative; }
-.fighter { width: 45%; max-width: 300px; background: rgba(15, 23, 42, 0.8); border-radius: 16px; padding: 16px; border: 2px solid rgba(255,255,255,0.1); position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.f-avatar { font-size: 40px; margin-bottom: 5px; }
-.f-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff; text-transform: uppercase; }
-.bar { width: 100%; height: 20px; background: #03050a; border-radius: 10px; overflow: hidden; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.2); }
-.hp-fill { height: 100%; background: linear-gradient(90deg, #e11d48, #f43f5e); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.en-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-
-/* FLOATING COMBAT TEXT CONTAINER */
-.combat-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; pointer-events: none; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.fct { font-size: 32px; font-weight: 900; text-shadow: 0 4px 15px rgba(0,0,0,0.8); animation: floatUp 1s ease-out forwards; position: absolute; white-space: nowrap; }
-@keyframes floatUp { 0% { opacity: 0; transform: translateY(20px) scale(0.8); } 20% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-40px) scale(1); } }
-
-/* BATTLE DASHBOARD */
-.battle-dash { background: #0f172a; padding: 20px; border-top: 2px solid #334155; display: flex; flex-direction: column; align-items: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
-.diff-badge { background: #334155; color: var(--gold); padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: bold; margin-bottom: -10px; z-index: 2; border: 1px solid #475569; }
-.question-box { font-size: 36px; font-weight: 900; color: #fff; background: #1e293b; padding: 15px 50px; border-radius: 12px; margin-bottom: 16px; border: 2px solid var(--cyan); text-shadow: 0 2px 10px rgba(56,189,248,0.5); }
-.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 320px; }
-.num-btn { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 15px; font-size: 26px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.1s; }
-.num-btn:active { background: #475569; transform: scale(0.95); }
-.num-btn.clear { background: linear-gradient(135deg, #be123c, #9f1239); border-color: #f43f5e; }
-.num-btn.submit { background: linear-gradient(135deg, #059669, #047857); border-color: #10b981; }
-.ans-display { font-size: 28px; font-weight: 900; letter-spacing: 4px; height: 40px; color: var(--gold); margin-bottom: 10px; }
-
-/* Result Modal */
-#resultModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 60; display: none; place-items: center; }
-.result-box { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 2px solid var(--gold); box-shadow: 0 0 50px rgba(251,191,36,0.2); }
-.result-title { font-size: 56px; font-weight: 900; margin: 0 0 20px 0; text-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-
-/* Registration Setup (ย่อโค้ดเพื่อรวมไฟล์เดียว) */
-#nameModal { position:fixed; inset:0; background:rgba(3,5,12,0.9); z-index:99; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px); }
-.modalbox { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid #334155; width: min(400px, 90%); }
-.modalbox input, .modalbox select { width: 100%; padding: 12px; margin: 8px 0 16px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-family: 'Kanit'; outline: none; }
+:root{
+  --bg:#070b16; --panel:#10182b; --panel2:#0c1324; --line:#263454;
+  --text:#edf3ff; --muted:#91a0bd; --cyan:#48d7ff; --purple:#8c6cff;
+  --gold:#ffd166; --green:#55e29a; --red:#ff5c7a; --orange:#ff9d4d;
+  --shadow:0 18px 50px rgba(0,0,0,.45);
+}
+*{ box-sizing:border-box; }
+body{
+  margin:0; min-height:100vh; color:var(--text); font-family:Inter,Segoe UI,Tahoma,system-ui,sans-serif;
+  background: radial-gradient(circle at 20% 10%,rgba(72,215,255,.08),transparent 25%),
+              radial-gradient(circle at 80% 15%,rgba(140,108,255,.10),transparent 28%),
+              linear-gradient(180deg,#050913,#091021 48%,#050913);
+  overflow-x:hidden;
+}
+button,input,select{ font:inherit; }
+button{ cursor:pointer; border:0; }
+.app{ min-height:100vh; }
+.hidden{ display:none!important; }
+.topbar{
+  position:sticky; top:0; z-index:30; display:flex; justify-content:space-between; align-items:center;
+  padding:12px 18px; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(5,9,19,.82); backdrop-filter:blur(16px);
+}
+.brand{ display:flex; align-items:center; gap:10px; font-weight:900; letter-spacing:.5px; }
+.brand .logo{
+  width:36px; height:36px; display:grid; place-items:center; border:1px solid #35547e; border-radius:12px;
+  background:linear-gradient(135deg,#152543,#0b1630); box-shadow:0 0 22px rgba(72,215,255,.08);
+}
+.top-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.icon-btn,.ghost-btn{ background:#0b1324; color:#c7d7f5; border:1px solid #263454; border-radius:10px; padding:9px 12px; }
+.icon-btn:hover,.ghost-btn:hover{ border-color:#44629a; }
+.page{ padding:24px; max-width:1500px; margin:auto; }
+.grid{ display:grid; gap:18px; }
+.grid.cols4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+.grid.cols3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+.grid.cols2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+.card{
+  background:linear-gradient(180deg, rgba(16,24,43,.94), rgba(10,16,30,.94));
+  border:1px solid rgba(91,123,172,.18); border-radius:20px; box-shadow:var(--shadow);
+}
+.card.pad{ padding:20px; }
+.hero{ padding:28px; display:flex; justify-content:space-between; gap:18px; align-items:flex-end; overflow:hidden; position:relative; }
+.eyebrow{ font-size:12px; color:#81a6cf; text-transform:uppercase; letter-spacing:1.5px; font-weight:800; }
+h1,h2,h3{ margin:0 0 8px; }
+.sub{ color:var(--muted); line-height:1.6; }
+.badges{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.badge{ padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid #304666; background:#0b1427; color:#b8c9e8; }
+.badge.gold{ color:#2a2000; background:var(--gold); border-color:#ffe08b; }
+.badge.green{ color:#062316; background:var(--green); border-color:#9ff0c6; }
+.badge.red{ color:#300712; background:var(--red); border-color:#ff9aae; }
+.stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.stat{ padding:12px; border-radius:14px; background:#0a1222; border:1px solid #202e49; }
+.stat b{ display:block; font-size:22px; }
+.stat span{ font-size:11px; color:var(--muted); }
+.btn{ padding:12px 16px; border-radius:12px; font-weight:900; transition:.18s transform,.18s filter; }
+.btn:hover{ transform:translateY(-1px); filter:brightness(1.08); }
+.btn.primary{ color:white; background:linear-gradient(90deg,#7567ff,#2cc7e8); box-shadow:0 8px 25px rgba(72,215,255,.14); }
+.btn.success{ background:linear-gradient(90deg,#26c986,#66e4a0); color:#052115; }
+.btn.danger{ background:linear-gradient(90deg,#ff4e72,#ff7d5d); color:white; }
+.btn.gold{ background:linear-gradient(90deg,#ffc24c,#ffe18a); color:#241d00; }
+.btn.secondary{ background:#0e1930; color:#cfe0ff; border:1px solid #2b4167; }
+.btn.full{ width:100%; }
+.form-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.field label{ display:block; font-size:12px; color:#8ea1c2; margin-bottom:6px; }
+input,select{ width:100%; padding:12px 13px; color:#f4f7ff; background:#070e1c; border:1px solid #28395a; border-radius:11px; outline:none; }
+input:focus,select:focus{ border-color:#4da9d0; box-shadow:0 0 0 3px rgba(72,215,255,.08); }
+.login-wrap{ min-height:100vh; display:grid; place-items:center; padding:24px; }
+.login{ max-width:540px; width:100%; padding:28px; }
+.logo-big{ width:84px; height:84px; margin:auto auto 14px; display:grid; place-items:center; font-size:42px; border-radius:24px; border:1px solid #31517f; background:linear-gradient(135deg,#14294a,#111731); box-shadow:0 0 40px rgba(72,215,255,.12); }
+.center{ text-align:center; }
+.class-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:8px; }
+.class-card{ padding:10px 6px; border-radius:12px; border:1px solid #233555; background:#0a1325; color:#b9c8df; text-align:center; }
+.class-card.active{ border-color:#56cbe7; background:linear-gradient(180deg,#102b43,#0b1a31); box-shadow:0 0 0 2px rgba(72,215,255,.12); }
+.class-card .emoji{ font-size:26px; display:block; margin-bottom:6px; }
+.map{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; }
+.stage{ min-height:150px; padding:16px; border-radius:18px; border:1px solid #293c5f; background:#0b1324; position:relative; overflow:hidden; color:#edf3ff; text-align:left; }
+.stage.locked{ filter:grayscale(.45); opacity:.65; }
+.stage.cleared{ border-color:#3c8f77; box-shadow:0 0 25px rgba(85,226,154,.06); }
+.progress{ height:9px; border-radius:999px; background:#0a1120; overflow:hidden; border:1px solid #22324b; }
+.progress>i{ display:block; height:100%; background:linear-gradient(90deg,#7567ff,#3bd4f0); border-radius:inherit; }
+.bar-row{ display:flex; justify-content:space-between; gap:10px; font-size:12px; color:#a3b5d2; margin-bottom:6px; }
+.avatar{ width:60px; height:60px; border-radius:18px; border:1px solid #344d73; background:#0c1730; display:grid; place-items:center; font-size:34px; }
+.player-row{ display:flex; align-items:center; gap:12px; }
+.action-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.quest{ font-size:22px; line-height:1.45; padding:22px; border:1px solid #334c74; background:#07101f; border-radius:16px; min-height:120px; display:flex; align-items:center; }
+.keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+.key{ padding:14px; border-radius:12px; background:#0b1527; border:1px solid #2a3e61; color:white; font-size:20px; font-weight:900; }
+.key:hover{ background:#132342; }
+.answer{ font-size:26px; letter-spacing:8px; text-align:center; }
+.battle{ display:grid; grid-template-columns:1fr 1.3fr 1fr; gap:16px; align-items:stretch; }
+.fighter{ padding:20px; position:relative; overflow:hidden; }
+.fighter.enemy{ border-color:rgba(255,92,122,.22); }
+.hp{ height:15px; border-radius:999px; background:#0a101d; border:1px solid #27334a; overflow:hidden; }
+.hp i{ display:block; height:100%; background:linear-gradient(90deg,#47e38e,#22bf78); }
+.hp.enemy i{ background:linear-gradient(90deg,#ff847e,#ff476b); }
+.modal{ position:fixed; inset:0; background:rgba(1,4,10,.73); backdrop-filter:blur(10px); display:grid; place-items:center; padding:20px; z-index:100; }
+.modal-card{ width:min(760px,100%); max-height:90vh; overflow:auto; padding:22px; border-radius:22px; border:1px solid #30476b; background:#0c1426; box-shadow:0 30px 90px rgba(0,0,0,.6); }
+.toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); padding:11px 16px; border-radius:999px; background:#0c1528; border:1px solid #30486f; z-index:200; }
+.toast.success{ border-color:#3d8f73; }
+.toast.error{ border-color:#a94f62; }
+.result-card{ text-align:center; padding:28px; }
+.log{ max-height:220px; overflow:auto; display:flex; flex-direction:column; gap:7px; }
+.log-line{ padding:8px 10px; border-radius:9px; background:#0a1221; color:#aebdde; font-size:12px; }
+@media (max-width:1100px){ .map{ grid-template-columns:repeat(3,1fr); } .battle{ grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 
-    <!-- Registration -->
-    <div id="nameModal">
-        <div class="modalbox">
-            <h2 style="margin-top:0; color:var(--cyan);">สร้างตัวละคร</h2>
-            <div style="text-align:left; font-size:12px; color:#94a3b8;">ชื่อผู้เล่น</div>
-            <input id="nameInput" placeholder="อัศวินคณิตศาสตร์" autocomplete="off">
-            <div style="text-align:left; font-size:12px; color:#94a3b8;">สายอาชีพ (ส่งผลต่อสกิล PvP)</div>
-            <select id="avatarInput">
-                <option value="hero">⚔️ Guardian (คริติคอลบ่อย)</option>
-                <option value="wizard">🧙 Mage (ดาเมจแรงขึ้น 20%)</option>
-                <option value="rogue">🗡️ Rogue (โบนัสตอบไว x1.8)</option>
-                <option value="cleric">🛡️ Cleric (ตอบถูกฮีลตัวเอง)</option>
-                <option value="robot">🤖 Arcane Bot (ลดดาเมจที่ได้รับ 20%)</option>
-            </select>
-            <button onclick="joinGame()" class="btn primary" style="width:100%; padding:14px; font-size:16px;">เริ่มผจญภัย</button>
+<div id="app"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+(() => {
+"use strict";
+
+const STORAGE = "mathDungeon_v4";
+const socket = io(); // เชื่อมต่อกับ Backend Server บน Render / Localport
+
+let defaultStages = [
+  { id:1, name:"ห้องแห่งสมการ", icon:"🧩", difficulty:"Normal", code:"24", xp:120, gold:60, hint:"ย้ายค่าคงที่ไปอีกข้าง แล้วหารด้วยสัมประสิทธิ์ของ x" },
+  { id:2, name:"ถ้ำพีชคณิต", icon:"🪨", difficulty:"Normal", code:"36", xp:150, gold:80, hint:"ลองแยกตัวประกอบหรือจัดกลุ่มพจน์ที่คล้ายกัน" },
+  { id:3, name:"หอคอยเรขาคณิต", icon:"🏰", difficulty:"Hard", code:"25", xp:190, gold:100, hint:"พิจารณาความสัมพันธ์ของด้านและสูตรพื้นที่" },
+  { id:4, name:"วิหารตรีโกณมิติ", icon:"⛩️", difficulty:"Hard", code:"45", xp:230, gold:120, hint:"เลือกอัตราส่วนตรีโกณมิติให้ตรงกับด้านที่รู้" },
+  { id:5, name:"ห้องทดลองแคลคูลัส", icon:"🧪", difficulty:"Expert", code:"12", xp:280, gold:150, hint:"ตรวจสอบกฎการหาอนุพันธ์พื้นฐาน" },
+  { id:6, name:"ห้องสถิติ", icon:"📊", difficulty:"Expert", code:"18", xp:320, gold:180, hint:"จัดข้อมูลก่อน แล้วเลือกสูตรหรือค่ากลางที่เหมาะสม" },
+  { id:7, name:"เขาวงกตเวกเตอร์", icon:"🧭", difficulty:"Expert", code:"30", xp:360, gold:200, hint:"พิจารณาขนาดและองค์ประกอบของเวกเตอร์" },
+  { id:8, name:"ประตูแห่งฟังก์ชัน", icon:"🚪", difficulty:"Legendary", code:"64", xp:420, gold:240, hint:"แทนค่าและตรวจสอบโดเมนของฟังก์ชัน" },
+  { id:9, name:"หอคอยอนุพันธ์", icon:"⚡", difficulty:"Legendary", code:"21", xp:460, gold:280, hint:"ใช้กฎอนุพันธ์ที่เหมาะสมกับรูปแบบของฟังก์ชัน" },
+  { id:10, name:"ห้องบอส", icon:"👑", difficulty:"Legendary", code:"42", xp:600, gold:500, hint:"รวบรวมทักษะจากทุกฐานก่อนตัดสินใจ" }
+];
+
+const classes = [
+  { id:"mage", name:"Mage", emoji:"🧙", passive:"Perfect Answer โบนัส Damage" },
+  { id:"warrior", name:"Warrior", emoji:"⚔️", passive:"Critical Chance สูงขึ้น" },
+  { id:"archer", name:"Archer", emoji:"🏹", passive:"Bonus ตอบเร็ว" },
+  { id:"knight", name:"Knight", emoji:"🛡️", passive:"ลด Damage ที่ได้รับ" },
+  { id:"alchemist", name:"Alchemist", emoji:"🧪", passive:"เริ่มต้นด้วย Hint Potion" }
+];
+
+let state = {
+  profile: null,
+  stages: structuredClone(defaultStages),
+  completed: [],
+  xp: 0, gold: 0, level: 1,
+  combo: 0, bestCombo: 0,
+  accuracy: { correct: 0, total: 0 },
+  inventory: { hint: 1, shield: 1, crystal: 0 },
+  badges: [],
+  pvp: { rating: 1000, wins: 0, losses: 0 },
+  settings: { sfx: true },
+  lastMode: "map"
+};
+
+let currentStage = null;
+let pvpState = null;
+
+// Socket.io sync listeners
+socket.on('currentAdminCodes', codes => {
+  if(codes) {
+    state.stages.forEach(s => {
+      if(codes[s.id]) s.code = codes[s.id];
+    });
+  }
+});
+
+function toast(msg, type="") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "toast " + (type || "");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.add("hidden"), 2200);
+}
+
+function levelInfo(xp) {
+  let lvl = 1, need = 250, remaining = xp;
+  while(remaining >= need && lvl < 50) {
+    remaining -= need; lvl++; need = Math.floor(need * 1.25);
+  }
+  return { lvl, remaining, need };
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;" }[m]));
+}
+
+function shell(content) {
+  document.getElementById("app").innerHTML = `
+    <div class="app">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo">⚔️</div>
+          <span>MATH DUNGEON ONLINE</span>
         </div>
+        <div class="top-actions">
+          ${state.profile ? `
+            <button class="ghost-btn" onclick="switchMode('map')">🗺️ แผนที่</button>
+            <button class="ghost-btn" onclick="switchMode('profile')">🧙 โปรไฟล์</button>
+            <button class="ghost-btn" onclick="switchMode('pvp')">⚔️ PvP Arena</button>
+            <button class="ghost-btn" onclick="openAdmin()">🔐 ครู</button>
+          ` : ""}
+        </div>
+      </div>
+      ${content}
     </div>
+  `;
+}
 
-    <!-- ปุ่มเรียก PvP -->
-    <button class="pvp-btn" onclick="startMatchmaking()">⚔️ QUICK DUEL</button>
+window.switchMode = function(mode) {
+  state.lastMode = mode;
+  if(mode === 'map') renderMap();
+  else if(mode === 'profile') renderProfile();
+  else if(mode === 'pvp') renderPvpLobby();
+  else if(mode === 'admin') renderAdmin();
+};
 
-    <!-- หน้าจอต่อสู้ RPG -->
-    <div id="battleScreen">
-        <div class="battle-header">🔥 MATH BATTLE 🔥</div>
-        <div class="arena">
-            <div class="fighter" id="myFighter">
-                <div class="f-avatar" id="myAvatarIcon">⚔️</div>
-                <div class="f-name">YOU</div>
-                <div class="bar"><div class="hp-fill" id="myHp"></div></div>
-                <div class="bar" style="height:10px;"><div class="en-fill" id="myEn"></div></div>
-            </div>
-            
-            <div class="fighter" id="oppFighter" style="text-align:right;">
-                <div class="f-avatar" id="oppAvatarIcon">⚔️</div>
-                <div class="f-name" id="oppName">OPPONENT</div>
-                <div class="bar"><div class="hp-fill" id="oppHp"></div></div>
-                <div class="bar" style="height:10px;"><div class="en-fill" id="oppEn"></div></div>
-            </div>
-
-            <div class="combat-center" id="combatCenter">
-                <!-- Floating texts จะถูกสคริปต์ยิงเข้ามาตรงนี้ -->
-            </div>
+function renderLogin() {
+  document.getElementById("app").innerHTML = `
+    <div class="login-wrap">
+      <div class="card login">
+        <div class="logo-big">🏰</div>
+        <div class="center">
+          <div class="eyebrow">Classroom RPG Online</div>
+          <h1>Math Dungeon</h1>
+          <div class="sub">ผจญภัยแก้โจทย์คณิตศาสตร์ออนไลน์ร่วมกับเพื่อนในห้อง</div>
         </div>
-
-        <div class="battle-dash">
-            <div class="diff-badge" id="questionDiff">⭐⭐ Normal</div>
-            <div class="question-box" id="battleQuestion">รอจับคู่...</div>
-            <div class="ans-display" id="ansDisplay"></div>
-            <div class="numpad">
-                <button class="num-btn" onclick="typeNum(1)">1</button>
-                <button class="num-btn" onclick="typeNum(2)">2</button>
-                <button class="num-btn" onclick="typeNum(3)">3</button>
-                <button class="num-btn" onclick="typeNum(4)">4</button>
-                <button class="num-btn" onclick="typeNum(5)">5</button>
-                <button class="num-btn" onclick="typeNum(6)">6</button>
-                <button class="num-btn" onclick="typeNum(7)">7</button>
-                <button class="num-btn" onclick="typeNum(8)">8</button>
-                <button class="num-btn" onclick="typeNum(9)">9</button>
-                <button class="num-btn clear" onclick="typeNum('C')">C</button>
-                <button class="num-btn" onclick="typeNum(0)">0</button>
-                <button class="num-btn submit" onclick="submitAns()">✓</button>
-            </div>
+        <div class="section">
+          <div class="field">
+            <label>ชื่อผู้เล่น</label>
+            <input id="name" maxlength="20" placeholder="เช่น ภากร" />
+          </div>
         </div>
+        <div class="section">
+          <div class="field"><label>เลือก Class</label></div>
+          <div class="class-grid" id="classGrid">
+            ${classes.map((c,i) => `
+              <button class="class-card ${i===0?'active':''}" onclick="selectClass('${c.id}', this)">
+                <span class="emoji">${c.emoji}</span>
+                <b>${c.name}</b>
+              </button>
+            `).join("")}
+          </div>
+        </div>
+        <div class="section">
+          <button class="btn primary full" onclick="startAdventure()">⚔️ เข้าสู่ดันเจี้ยน</button>
+        </div>
+      </div>
     </div>
+  `;
+}
 
-    <!-- สรุปผล -->
-    <div id="resultModal">
-        <div class="result-box">
-            <h1 class="result-title" id="resultTitle">VICTORY</h1>
-            <button class="btn primary" onclick="closeBattle()">กลับสู่แผนที่</button>
+let selectedClassId = 'mage';
+window.selectClass = function(id, el) {
+  document.querySelectorAll('.class-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedClassId = id;
+};
+
+window.startAdventure = function() {
+  const name = document.getElementById("name").value.trim();
+  if(!name) { toast("กรุณาใส่ชื่อผู้เล่น", "error"); return; }
+  state.profile = { name, classId: selectedClassId };
+  socket.emit('setupPlayer', { name, avatar: selectedClassId });
+  socket.emit('requestAdminCodes');
+  renderMap();
+  toast("🎉 ยินดีต้อนรับสู่ Math Dungeon", "success");
+};
+
+function renderMap() {
+  const info = levelInfo(state.xp);
+  const done = state.completed.length;
+  shell(`
+    <div class="page">
+      <div class="card hero">
+        <div>
+          <div class="eyebrow">MAIN QUEST</div>
+          <h1>เส้นทางสู่ปราสาทสมการ</h1>
+          <div class="sub">ใส่รหัสผ่านที่ได้รับจากคุณครูเพื่อปลดล็อกฐาน</div>
+          <div class="badges">
+            <span class="badge">🧙 ${esc(state.profile.name)}</span>
+            <span class="badge">⭐ Lv.${info.lvl}</span>
+            <span class="badge">🏆 ${state.pvp.rating} Rating</span>
+          </div>
         </div>
+        <div class="action-row">
+          <button class="btn primary" onclick="switchMode('pvp')">⚔️ ดวล PvP</button>
+        </div>
+      </div>
+      <div class="section card pad">
+        <h3>🗺️ แผนที่ฐานการเรียนรู้</h3>
+        <div class="map section">
+          ${state.stages.map((s, i) => {
+            const cleared = state.completed.includes(s.id);
+            const unlocked = i === 0 || state.completed.includes(state.stages[i-1].id);
+            return `
+              <button class="stage ${(!unlocked && !cleared)?'locked':''} ${cleared?'cleared':''}" ${unlocked||cleared ? `onclick="openStage(${s.id})"`:''}>
+                <div class="icon">${s.icon}</div>
+                <div class="status">${cleared?'✅':unlocked?'🟡':'🔒'}</div>
+                <h3>BASE ${String(s.id).padStart(2,"0")}</h3>
+                <div>${esc(s.name)}</div>
+                <small>${s.difficulty} • +${s.xp} XP</small>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
     </div>
+  `);
+}
 
-    <script>
-        const socket = io();
-        let myRole = '';
-        let currentAns = '';
-        
-        const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
+window.openStage = function(id) {
+  currentStage = state.stages.find(s => s.id === id);
+  if(!currentStage) return;
+  shell(`
+    <div class="page">
+      <div class="card hero">
+        <div>
+          <div class="eyebrow">BASE ${currentStage.id}</div>
+          <h1>${esc(currentStage.name)}</h1>
+          <div class="sub">กรอกรหัสคำตอบเพื่อปลดล็อกฐานนี้</div>
+        </div>
+      </div>
+      <div class="section grid cols2">
+        <div class="card pad">
+          <h2>📜 MISSION HINT</h2>
+          <div class="quest">${esc(currentStage.hint)}</div>
+        </div>
+        <div class="card pad">
+          <h2>🔐 SECURITY CONSOLE</h2>
+          <input id="answer" class="answer" readonly placeholder="_ _ _" />
+          <div class="keypad">
+            ${[1,2,3,4,5,6,7,8,9,"C",0,"✓"].map(v => `
+              <button class="key" onclick="pressKey('${v}')">${v}</button>
+            `).join("")}
+          </div>
+          <div class="section">
+            <button class="btn primary full" onclick="submitAnswer()">⚔️ ยืนยันรหัส</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+};
 
-        function joinGame() {
-            const name = document.getElementById('nameInput').value.trim() || 'Hero';
-            const avatar = document.getElementById('avatarInput').value;
-            socket.emit('setupPlayer', { name, avatar });
-            document.getElementById('nameModal').style.display = 'none';
-        }
+window.pressKey = function(v) {
+  const inp = document.getElementById("answer");
+  if(!inp) return;
+  if(v === "C") inp.value = "";
+  else if(v === "✓") submitAnswer();
+  else if(inp.value.length < 10) inp.value += v;
+};
 
-        document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+window.submitAnswer = function() {
+  const val = document.getElementById("answer").value.trim();
+  if(val === String(currentStage.code)) {
+    if(!state.completed.includes(currentStage.id)) state.completed.push(currentStage.id);
+    state.xp += currentStage.xp;
+    state.gold += currentStage.gold;
+    toast(`🔓 ปดล็อก ${currentStage.name} สำเร็จ!`, "success");
+    renderMap();
+  } else {
+    toast("❌ รหัสผ่านไม่ถูกต้อง ลองตรวจสอบอีกครั้ง", "error");
+  }
+};
 
-        function startMatchmaking() {
-            socket.emit('findMatch');
-            document.querySelector('.pvp-btn').innerText = '⏳ SEARCHING...';
-        }
+window.openAdmin = function() {
+  const pass = prompt("ใส่รหัสผ่านครู (ค่าเริ่มต้น: admin):");
+  if(pass === "admin") {
+    switchMode('admin');
+  } else {
+    toast("❌ รหัสผ่านไม่ถูกต้อง", "error");
+  }
+};
 
-        socket.on('battleStart', data => {
-            document.getElementById('battleScreen').style.display = 'flex';
-            document.querySelector('.pvp-btn').style.display = 'none';
-            myRole = data.me;
-            
-            const meData = data.match[myRole];
-            const oppData = data.opponent;
+function renderAdmin() {
+  shell(`
+    <div class="page">
+      <div class="card hero">
+        <div>
+          <div class="eyebrow">TEACHER PANEL</div>
+          <h1>🔐 จัดการรหัสผ่านแต่ละฐาน</h1>
+        </div>
+      </div>
+      <div class="section card pad">
+        <div class="grid cols2">
+          ${state.stages.map(s => `
+            <div class="stage-editor card pad">
+              <label>ฐานที่ ${s.id}: ${s.name}</label>
+              <input id="admin_code_${s.id}" value="${s.code}" onchange="updateAdminCode(${s.id}, this.value)" />
+            </div>
+          `).join("")}
+        </div>
+        <div class="section">
+          <button class="btn success full" onclick="saveAdminCodes()">💾 บันทึกและส่งไปยังเซิร์ฟเวอร์</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
 
-            document.getElementById('oppName').innerText = oppData.name;
-            document.getElementById('myAvatarIcon').innerText = avatarIcons[meData.avatar];
-            document.getElementById('oppAvatarIcon').innerText = avatarIcons[oppData.avatar];
+window.updateAdminCode = function(id, code) {
+  const st = state.stages.find(s => s.id === id);
+  if(st) st.code = code;
+};
 
-            updateBars(data.match);
-            setQuestion(data.match.question);
-        });
+window.saveAdminCodes = function() {
+  let newCodes = {};
+  state.stages.forEach(s => newCodes[s.id] = s.code);
+  socket.emit('updateAdminCodes', newCodes);
+  toast("💾 บันทึกรหัสผ่านเรียบร้อย!", "success");
+  renderMap();
+};
 
-        function typeNum(n) {
-            if(n === 'C') currentAns = '';
-            else if(currentAns.length < 5) currentAns += n;
-            document.getElementById('ansDisplay').innerText = currentAns;
-        }
-
-        function submitAns() {
-            if(currentAns === '') return;
-            socket.emit('submitBattleAnswer', currentAns);
-            currentAns = ''; document.getElementById('ansDisplay').innerText = '';
-        }
-
-        function spawnCombatText(textList, isMeAttacking) {
-            const center = document.getElementById('combatCenter');
-            center.innerHTML = ''; // Clear old texts
-            
-            textList.forEach((text, i) => {
-                setTimeout(() => {
-                    const el = document.createElement('div');
-                    el.className = 'fct';
-                    el.innerText = text;
-                    
-                    // สีกำหนดจากประเภทข้อความ
-                    if(text.includes('HP')) el.style.color = isMeAttacking ? '#10b981' : '#f43f5e';
-                    else if(text.includes('CRITICAL')) el.style.color = '#fbbf24';
-                    else if(text.includes('COMBO')) el.style.color = '#f97316';
-                    else if(text.includes('FIRST')) el.style.color = '#38bdf8';
-                    else if(text.includes('MISS')) el.style.color = '#94a3b8';
-                    else el.style.color = '#fff';
-
-                    // สุ่มตำแหน่งซ้ายขวานิดหน่อยให้ดูเป็นธรรมชาติ
-                    const offsetX = (Math.random() - 0.5) * 40;
-                    el.style.left = `calc(50% + ${offsetX}px)`;
-                    
-                    center.appendChild(el);
-                }, i * 200); // ดีเลย์ข้อความให้เด้งตามลำดับ (เช่น Combo -> Crit -> Dmg)
-            });
-        }
-
-        function updateBars(match) {
-            const oppRole = myRole === 'p1' ? 'p2' : 'p1';
-            
-            // คำนวณเปอร์เซ็นต์หลอดเลือด (ระวังหาร 0)
-            const myHpPct = Math.max(0, (match[myRole].hp / match[myRole].maxHp) * 100);
-            const oppHpPct = Math.max(0, (match[oppRole].hp / match[oppRole].maxHp) * 100);
-
-            document.getElementById('myHp').style.width = myHpPct + '%';
-            document.getElementById('oppHp').style.width = oppHpPct + '%';
-            document.getElementById('myEn').style.width = match[myRole].energy + '%';
-            document.getElementById('oppEn').style.width = match[oppRole].energy + '%';
-        }
-
-        socket.on('battleUpdate', data => {
-            if (data.action === 'HIT') {
-                updateBars(data.match);
-                spawnCombatText(data.logs, data.attacker === myRole);
-            } else if (data.action === 'MISS') {
-                spawnCombatText(data.logs, true);
-                const qb = document.getElementById('battleQuestion');
-                qb.style.borderColor = '#f43f5e';
-                setTimeout(() => qb.style.borderColor = '#38bdf8', 300);
-            }
-        });
-
-        function setQuestion(q) {
-            document.getElementById('battleQuestion').innerText = q.text;
-            document.getElementById('questionDiff').innerText = q.diff;
-            // เอฟเฟกต์โจทย์ระดับตำนาน
-            if(q.diff.includes('Legendary')) {
-                document.getElementById('battleQuestion').style.boxShadow = '0 0 20px #fbbf24';
-                document.getElementById('questionDiff').style.color = '#f43f5e';
-            } else {
-                document.getElementById('battleQuestion').style.boxShadow = 'none';
-                document.getElementById('questionDiff').style.color = '#fbbf24';
-            }
-        }
-
-        socket.on('nextQuestion', q => setQuestion(q));
-
-        socket.on('battleEnd', data => {
-            document.getElementById('resultModal').style.display = 'grid';
-            const rt = document.getElementById('resultTitle');
-            rt.innerText = data.result;
-            rt.style.color = data.result.includes('VICTORY') ? '#fbbf24' : '#94a3b8';
-        });
-
-        function closeBattle() {
-            document.getElementById('resultModal').style.display = 'none';
-            document.getElementById('battleScreen').style.display = 'none';
-            const pvpBtn = document.querySelector('.pvp-btn');
-            pvpBtn.style.display = 'block';
-            pvpBtn.innerText = '⚔️ QUICK DUEL';
-        }
-    </script>
+renderLogin();
+})();
+</script>
 </body>
 </html>
