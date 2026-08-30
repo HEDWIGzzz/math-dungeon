@@ -20,15 +20,35 @@ let matchmakingQueue = [];
 let activeBattles = {};
 let battleIdCounter = 0;
 
-// ฟังก์ชันสุ่มโจทย์คณิตศาสตร์
-function generateMathQuestion() {
-    const ops = ['+', '-', '*'];
-    const op = ops[Math.floor(Math.random() * ops.length)];
-    let num1, num2, answer;
-    if (op === '+') { num1 = Math.floor(Math.random()*50)+10; num2 = Math.floor(Math.random()*50)+10; answer = num1 + num2; }
-    else if (op === '-') { num1 = Math.floor(Math.random()*50)+20; num2 = Math.floor(Math.random()*20)+1; answer = num1 - num2; }
-    else { num1 = Math.floor(Math.random()*9)+2; num2 = Math.floor(Math.random()*9)+2; answer = num1 * num2; }
-    return { text: `${num1} ${op} ${num2} = ?`, answer: answer.toString(), difficulty: 'Normal' };
+// ฟังก์ชันสร้างโจทย์ 5 ระดับความยาก
+function generateBattleQuestion() {
+    const r = Math.random();
+    let num1, num2, num3, ans, text;
+    let diff, baseDmg;
+
+    if (r < 0.3) {
+        // Easy
+        num1 = Math.floor(Math.random() * 20) + 1; num2 = Math.floor(Math.random() * 20) + 1;
+        text = `${num1} + ${num2} = ?`; ans = num1 + num2; diff = '⭐ Easy'; baseDmg = 10;
+    } else if (r < 0.6) {
+        // Normal
+        num1 = Math.floor(Math.random() * 12) + 2; num2 = Math.floor(Math.random() * 12) + 2;
+        text = `${num1} × ${num2} = ?`; ans = num1 * num2; diff = '⭐⭐ Normal'; baseDmg = 20;
+    } else if (r < 0.85) {
+        // Hard
+        num1 = Math.floor(Math.random() * 10) + 5; num2 = Math.floor(Math.random() * 10) + 2; num3 = Math.floor(Math.random() * 30) + 10;
+        text = `(${num1} × ${num2}) + ${num3} = ?`; ans = (num1 * num2) + num3; diff = '⭐⭐⭐ Hard'; baseDmg = 35;
+    } else if (r < 0.95) {
+        // Expert
+        num1 = Math.floor(Math.random() * 15) + 10; num2 = Math.floor(Math.random() * 15) + 10; num3 = Math.floor(Math.random() * 50) + 20;
+        text = `(${num1} × ${num2}) - ${num3} = ?`; ans = (num1 * num2) - num3; diff = '⭐⭐⭐⭐ Expert'; baseDmg = 50;
+    } else {
+        // Legendary
+        num1 = Math.floor(Math.random() * 9) + 2; num2 = Math.floor(Math.random() * 9) + 2; num3 = Math.floor(Math.random() * 9) + 2;
+        text = `${num1} × ${num2} × ${num3} = ?`; ans = num1 * num2 * num3; diff = '⭐⭐⭐⭐⭐ Legendary'; baseDmg = 80;
+    }
+
+    return { text, answer: ans.toString(), diff, baseDmg, startTime: Date.now() };
 }
 
 io.on('connection', (socket) => {
@@ -45,14 +65,12 @@ io.on('connection', (socket) => {
 
     socket.on('move', data => {
         if (players[socket.id] && !players[socket.id].inBattle) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].isMoving = data.isMoving;
+            players[socket.id].x = data.x; players[socket.id].y = data.y; players[socket.id].isMoving = data.isMoving;
         }
     });
 
     // ==========================================
-    // PVP SYSTEM
+    // PVP MATCHMAKING & COMBAT ENGINE
     // ==========================================
     socket.on('findMatch', () => {
         const p = players[socket.id];
@@ -67,17 +85,19 @@ io.on('connection', (socket) => {
                 const p2Id = matchmakingQueue.shift();
                 
                 const battleId = 'BATTLE_' + (++battleIdCounter);
-                const firstQuestion = generateMathQuestion();
+                const firstQuestion = generateBattleQuestion();
                 
+                // Set Max HP based on Class
+                const getHp = (avatar) => avatar === 'robot' ? 150 : (avatar === 'hero' ? 120 : 100);
+
                 activeBattles[battleId] = {
                     id: battleId,
-                    p1: { id: p1Id, hp: 100, maxHp: 100, energy: 0, combo: 0 },
-                    p2: { id: p2Id, hp: 100, maxHp: 100, energy: 0, combo: 0 },
+                    p1: { id: p1Id, avatar: players[p1Id].avatar, hp: getHp(players[p1Id].avatar), maxHp: getHp(players[p1Id].avatar), energy: 0, combo: 0 },
+                    p2: { id: p2Id, avatar: players[p2Id].avatar, hp: getHp(players[p2Id].avatar), maxHp: getHp(players[p2Id].avatar), energy: 0, combo: 0 },
                     question: firstQuestion
                 };
 
-                players[p1Id].inBattle = true;
-                players[p2Id].inBattle = true;
+                players[p1Id].inBattle = true; players[p2Id].inBattle = true;
 
                 io.to(p1Id).emit('battleStart', { match: activeBattles[battleId], opponent: players[p2Id], me: 'p1' });
                 io.to(p2Id).emit('battleStart', { match: activeBattles[battleId], opponent: players[p1Id], me: 'p2' });
@@ -90,7 +110,6 @@ io.on('connection', (socket) => {
         const player = players[pId];
         if (!player || !player.inBattle) return;
 
-        // หาห้อง Battle ที่ผู้เล่นอยู่
         let battle = null, myRole = null, oppRole = null;
         for (let bId in activeBattles) {
             if (activeBattles[bId].p1.id === pId) { battle = activeBattles[bId]; myRole = 'p1'; oppRole = 'p2'; break; }
@@ -101,35 +120,67 @@ io.on('connection', (socket) => {
         const isCorrect = (ans === battle.question.answer);
         const me = battle[myRole];
         const opp = battle[oppRole];
+        let logs = [];
 
         if (isCorrect) {
+            const timeTaken = (Date.now() - battle.question.startTime) / 1000;
             me.combo += 1;
-            me.energy = Math.min(100, me.energy + 20);
+            me.energy = Math.min(100, me.energy + 25);
             
-            // Base Damage + Combo Bonus
-            let dmg = 15 + (me.combo * 2);
-            opp.hp -= dmg;
-            
-            io.to(battle.p1.id).emit('battleUpdate', { 
-                action: 'HIT', attacker: myRole, damage: dmg, combo: me.combo, match: battle 
-            });
-            io.to(battle.p2.id).emit('battleUpdate', { 
-                action: 'HIT', attacker: myRole, damage: dmg, combo: me.combo, match: battle 
-            });
+            let dmg = battle.question.baseDmg;
 
-            // เช็คผลแพ้ชนะ
+            // 1. CLASS PASSIVE SKILLS
+            let critChance = 0.1;
+            if (me.avatar === 'hero') critChance = 0.3; // Warrior: High Crit
+            if (me.avatar === 'wizard') dmg = Math.floor(dmg * 1.2); // Mage: +20% Base Dmg
+            if (me.avatar === 'cleric') { 
+                me.hp = Math.min(me.maxHp, me.hp + 10); // Cleric: Heal on correct
+                logs.push('💚 HEAL +10');
+            }
+
+            // 2. SPEED BONUS (First Strike)
+            if (timeTaken <= 3.5) {
+                let speedMult = me.avatar === 'rogue' ? 1.8 : 1.5; // Rogue: higher speed bonus
+                dmg = Math.floor(dmg * speedMult);
+                logs.push('⚡ FIRST STRIKE!');
+            }
+
+            // 3. COMBO BONUS
+            if (me.combo > 1) {
+                dmg += (me.combo * 5);
+                logs.push(`🔥 COMBO x${me.combo}`);
+            }
+
+            // 4. CRITICAL HIT
+            if (Math.random() < critChance) {
+                dmg = Math.floor(dmg * 2);
+                logs.push('💥 CRITICAL!');
+            }
+
+            // 5. OPPONENT DEFENSE (Robot)
+            if (opp.avatar === 'robot') {
+                dmg = Math.floor(dmg * 0.8); // Robot takes 20% less damage
+            }
+
+            // APPLY DAMAGE
+            opp.hp -= dmg;
+            logs.push(`-${dmg} HP`);
+            
+            io.to(battle.p1.id).emit('battleUpdate', { action: 'HIT', attacker: myRole, logs, match: battle });
+            io.to(battle.p2.id).emit('battleUpdate', { action: 'HIT', attacker: myRole, logs, match: battle });
+
+            // WIN CONDITION
             if (opp.hp <= 0) {
-                players[battle[myRole].id].score += 500; // รางวัลผู้ชนะ
-                players[battle[myRole].id].inBattle = false;
-                players[battle[oppRole].id].inBattle = false;
-                io.to(battle[myRole].id).emit('battleEnd', { result: 'VICTORY' });
-                io.to(battle[oppRole].id).emit('battleEnd', { result: 'DEFEAT' });
+                players[battle[myRole].id].score += 500;
+                players[battle[myRole].id].inBattle = false; players[battle[oppRole].id].inBattle = false;
+                io.to(battle[myRole].id).emit('battleEnd', { result: '🏆 VICTORY' });
+                io.to(battle[oppRole].id).emit('battleEnd', { result: '💀 DEFEAT' });
                 delete activeBattles[battle.id];
                 return;
             }
 
-            // เปลี่ยนโจทย์เมื่อมีคนตอบถูก
-            battle.question = generateMathQuestion();
+            // NEXT QUESTION
+            battle.question = generateBattleQuestion();
             setTimeout(() => {
                 if(activeBattles[battle.id]) {
                     io.to(battle.p1.id).emit('nextQuestion', battle.question);
@@ -139,18 +190,17 @@ io.on('connection', (socket) => {
 
         } else {
             me.combo = 0; // Combo Break
-            io.to(pId).emit('battleUpdate', { action: 'MISS', match: battle });
+            io.to(pId).emit('battleUpdate', { action: 'MISS', logs: ['❌ MISS! Combo Break'], match: battle });
         }
     });
 
     socket.on('disconnect', () => {
         matchmakingQueue = matchmakingQueue.filter(id => id !== socket.id);
         delete players[socket.id];
-        // หากหลุดขณะต่อสู้ ปรับแพ้ทันที (ยังไม่ได้เขียนดักใน MVP นี้)
     });
 });
 
 setInterval(() => { io.emit('stateUpdate', players); }, 40);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Math Dungeon + PvP Online port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Math Dungeon PvP Online port ${PORT}`));
