@@ -1,12 +1,16 @@
-/* client/style.css */
-body { font-family: Arial, sans-serif; background:#111; color:#eee; padding:20px; }
-#lobby { max-width:600px; margin:auto; }
-#playersList li { margin:6px 0; }
-#battle { display:flex; gap:20px; max-width:900px; margin:auto; }
-.playerPanel { width:200px; background:#222; padding:10px; border-radius:8px; }
-.arena { flex:1; background:#1a1a1a; padding:10px; border-radius:8px; }
-#questionBox { margin-top:20px; }
-#keypad { margin-top:10px; }
-.keys button { width:60px; height:40px; margin:4px; font-size:18px; }
-#combatLog { margin-top:10px; background:#0f0f0f; padding:8px; border-radius:6px; height:150px; overflow:auto; }
+body {
+  background: #111;
+  color: #eee;
+  font-family: Arial;
+  padding: 20px;
+}
 
+#battle {
+  margin-top: 20px;
+}
+
+#log {
+  margin-top: 10px;
+  background: #222;
+  padding: 10px;
+}
