@@ -306,7 +306,6 @@ window.submitAnswer = function() {
     state.xp += currentStage.xp;
     state.gold += currentStage.gold;
     
-    // ส่งข้อมูลบันทึกคะแนนไปเซิร์ฟเวอร์
     socket.emit('updateProgress', {
       name: state.profile.name,
       xp: state.xp,
