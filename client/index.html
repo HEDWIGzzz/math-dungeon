@@ -1,1 +1,42 @@
+<!-- client/index.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Math PvP Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="lobby">
+    <h2>Online Players</h2>
+    <ul id="playersList"></ul>
+    <div>
+      <button id="refreshBtn">Refresh</button>
+    </div>
+  </div>
+
+  <div id="battle" style="display:none;">
+    <div class="playerPanel" id="playerPanel"></div>
+    <div class="arena">
+      <div id="arenaCharacters">VS</div>
+      <div id="questionBox">
+        <div id="questionText"></div>
+        <div id="keypad">
+          <div id="answerInput"></div>
+          <div class="keys">
+            <button class="num">1</button><button class="num">2</button><button class="num">3</button>
+            <button class="num">4</button><button class="num">5</button><button class="num">6</button>
+            <button class="num">7</button><button class="num">8</button><button class="num">9</button>
+            <button id="clear">C</button><button class="num">0</button><button id="submit">✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="combatLog"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
 
