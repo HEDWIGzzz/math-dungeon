@@ -8,199 +8,137 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const world = { width: 4000, height: 4000 };
-const stations = [ /* โค้ดฐานเดิม */ ];
-let stationCodes = { 1: '1234', 2: '5678', 3: '9999', 4: '0000', 5: 'math' };
+
+// 10 ฐานการเรียนรู้
+const stages = [
+    { id: 1, name: "ห้องแห่งสมการ", difficulty: "Normal", code: "24", xp: 120, gold: 60 },
+    { id: 2, name: "ถ้ำพีชคณิต", difficulty: "Normal", code: "36", xp: 150, gold: 80 },
+    { id: 3, name: "หอคอยเรขาคณิต", difficulty: "Hard", code: "25", xp: 190, gold: 100 },
+    { id: 4, name: "วิหารตรีโกณมิติ", difficulty: "Hard", code: "45", xp: 230, gold: 120 },
+    { id: 5, name: "ห้องทดลองแคลคูลัส", difficulty: "Expert", code: "12", xp: 280, gold: 150 },
+    { id: 6, name: "ห้องสถิติ", difficulty: "Expert", code: "18", xp: 320, gold: 180 },
+    { id: 7, name: "เขาวงกตเวกเตอร์", difficulty: "Expert", code: "30", xp: 360, gold: 200 },
+    { id: 8, name: "ประตูแห่งฟังก์ชัน", difficulty: "Legendary", code: "64", xp: 420, gold: 240 },
+    { id: 9, name: "หอคอยอนุพันธ์", difficulty: "Legendary", code: "21", xp: 460, gold: 280 },
+    { id: 10, name: "ห้องบอส", difficulty: "Legendary", code: "42", xp: 600, gold: 500 }
+];
+
+let stationCodes = {};
+stages.forEach(s => stationCodes[s.id] = s.code);
 
 const players = {};
 let matchmakingQueue = [];
 let activeBattles = {};
 let battleIdCounter = 0;
 
-// ฟังก์ชันสร้างโจทย์ 5 ระดับความยาก
-function generateBattleQuestion() {
-    const r = Math.random();
-    let num1, num2, num3, ans, text;
-    let diff, baseDmg;
-
-    if (r < 0.3) {
-        // Easy
-        num1 = Math.floor(Math.random() * 20) + 1; num2 = Math.floor(Math.random() * 20) + 1;
-        text = `${num1} + ${num2} = ?`; ans = num1 + num2; diff = '⭐ Easy'; baseDmg = 10;
-    } else if (r < 0.6) {
-        // Normal
-        num1 = Math.floor(Math.random() * 12) + 2; num2 = Math.floor(Math.random() * 12) + 2;
-        text = `${num1} × ${num2} = ?`; ans = num1 * num2; diff = '⭐⭐ Normal'; baseDmg = 20;
-    } else if (r < 0.85) {
-        // Hard
-        num1 = Math.floor(Math.random() * 10) + 5; num2 = Math.floor(Math.random() * 10) + 2; num3 = Math.floor(Math.random() * 30) + 10;
-        text = `(${num1} × ${num2}) + ${num3} = ?`; ans = (num1 * num2) + num3; diff = '⭐⭐⭐ Hard'; baseDmg = 35;
-    } else if (r < 0.95) {
-        // Expert
-        num1 = Math.floor(Math.random() * 15) + 10; num2 = Math.floor(Math.random() * 15) + 10; num3 = Math.floor(Math.random() * 50) + 20;
-        text = `(${num1} × ${num2}) - ${num3} = ?`; ans = (num1 * num2) - num3; diff = '⭐⭐⭐⭐ Expert'; baseDmg = 50;
-    } else {
-        // Legendary
-        num1 = Math.floor(Math.random() * 9) + 2; num2 = Math.floor(Math.random() * 9) + 2; num3 = Math.floor(Math.random() * 9) + 2;
-        text = `${num1} × ${num2} × ${num3} = ?`; ans = num1 * num2 * num3; diff = '⭐⭐⭐⭐⭐ Legendary'; baseDmg = 80;
-    }
-
-    return { text, answer: ans.toString(), diff, baseDmg, startTime: Date.now() };
-}
-
 io.on('connection', (socket) => {
-    socket.emit('initGame', { id: socket.id, world, stations, tiles: [] });
+    socket.emit('initGame', { id: socket.id, stages, stationCodes });
 
-    socket.on('setupPlayer', data => {
+    socket.emit('currentAdminCodes', stationCodes);
+
+    socket.setupPlayer = (data) => {
         players[socket.id] = {
-            id: socket.id, name: data.name, avatar: data.avatar,
-            x: 2000, y: 2000, isMoving: false, level: 1, xp: 0, score: 0, completed: 0,
+            id: socket.id,
+            name: data.name,
+            classId: data.classId || 'mage',
+            x: 2000, y: 2000,
+            score: 0,
             inBattle: false
         };
-        socket.emit('playerReady', { player: players[socket.id] });
-    });
+        io.emit('stateUpdate', players);
+    };
+
+    socket.on('setupPlayer', data => socket.setupPlayer(data));
 
     socket.on('move', data => {
-        if (players[socket.id] && !players[socket.id].inBattle) {
-            players[socket.id].x = data.x; players[socket.id].y = data.y; players[socket.id].isMoving = data.isMoving;
+        if (players[socket.id]) {
+            players[socket.id].x = data.x;
+            players[socket.id].y = data.y;
         }
     });
 
-    // ==========================================
-    // PVP MATCHMAKING & COMBAT ENGINE
-    // ==========================================
-    socket.on('findMatch', () => {
+    // Admin Codes Update
+    socket.on('updateAdminCodes', newCodes => {
+        stationCodes = newCodes;
+        stages.forEach(s => {
+            if (newCodes[s.id]) s.code = newCodes[s.id];
+        });
+        io.emit('currentAdminCodes', stationCodes);
+        console.log('Teacher updated station codes:', stationCodes);
+    });
+
+    // PvP Matchmaking
+    socket.on('findPvpMatch', () => {
         const p = players[socket.id];
         if (!p || p.inBattle) return;
-        
+
         if (!matchmakingQueue.includes(socket.id)) {
             matchmakingQueue.push(socket.id);
-            socket.emit('matchStatus', { msg: 'SEARCHING FOR OPPONENT...' });
-            
+            socket.emit('pvpStatus', { msg: 'SEARCHING FOR RIVAL...' });
+
             if (matchmakingQueue.length >= 2) {
                 const p1Id = matchmakingQueue.shift();
                 const p2Id = matchmakingQueue.shift();
-                
-                const battleId = 'BATTLE_' + (++battleIdCounter);
-                const firstQuestion = generateBattleQuestion();
-                
-                // Set Max HP based on Class
-                const getHp = (avatar) => avatar === 'robot' ? 150 : (avatar === 'hero' ? 120 : 100);
 
+                const battleId = 'BATTLE_' + (++battleIdCounter);
                 activeBattles[battleId] = {
                     id: battleId,
-                    p1: { id: p1Id, avatar: players[p1Id].avatar, hp: getHp(players[p1Id].avatar), maxHp: getHp(players[p1Id].avatar), energy: 0, combo: 0 },
-                    p2: { id: p2Id, avatar: players[p2Id].avatar, hp: getHp(players[p2Id].avatar), maxHp: getHp(players[p2Id].avatar), energy: 0, combo: 0 },
-                    question: firstQuestion
+                    p1: { id: p1Id, hp: 100, combo: 0 },
+                    p2: { id: p2Id, hp: 100, combo: 0 }
                 };
 
-                players[p1Id].inBattle = true; players[p2Id].inBattle = true;
+                players[p1Id].inBattle = true;
+                players[p2Id].inBattle = true;
 
-                io.to(p1Id).emit('battleStart', { match: activeBattles[battleId], opponent: players[p2Id], me: 'p1' });
-                io.to(p2Id).emit('battleStart', { match: activeBattles[battleId], opponent: players[p1Id], me: 'p2' });
+                io.to(p1Id).emit('pvpStart', { matchId: battleId, opponent: players[p2Id], role: 'p1' });
+                io.to(p2Id).emit('pvpStart', { matchId: battleId, opponent: players[p1Id], role: 'p2' });
             }
         }
     });
 
-    socket.on('submitBattleAnswer', ans => {
-        const pId = socket.id;
-        const player = players[pId];
-        if (!player || !player.inBattle) return;
-
-        let battle = null, myRole = null, oppRole = null;
-        for (let bId in activeBattles) {
-            if (activeBattles[bId].p1.id === pId) { battle = activeBattles[bId]; myRole = 'p1'; oppRole = 'p2'; break; }
-            if (activeBattles[bId].p2.id === pId) { battle = activeBattles[bId]; myRole = 'p2'; oppRole = 'p1'; break; }
-        }
+    socket.on('submitPvpAction', data => {
+        const { matchId, damage, isCorrect } = data;
+        const battle = activeBattles[matchId];
         if (!battle) return;
 
-        const isCorrect = (ans === battle.question.answer);
-        const me = battle[myRole];
-        const opp = battle[oppRole];
-        let logs = [];
+        const isP1 = battle.p1.id === socket.id;
+        const attacker = isP1 ? battle.p1 : battle.p2;
+        const defender = isP1 ? battle.p2 : battle.p1;
+        const oppSocketId = defender.id;
 
         if (isCorrect) {
-            const timeTaken = (Date.now() - battle.question.startTime) / 1000;
-            me.combo += 1;
-            me.energy = Math.min(100, me.energy + 25);
-            
-            let dmg = battle.question.baseDmg;
+            attacker.combo++;
+            let finalDmg = damage + Math.min(30, (attacker.combo - 1) * 5);
+            defender.hp = Math.max(0, defender.hp - finalDmg);
 
-            // 1. CLASS PASSIVE SKILLS
-            let critChance = 0.1;
-            if (me.avatar === 'hero') critChance = 0.3; // Warrior: High Crit
-            if (me.avatar === 'wizard') dmg = Math.floor(dmg * 1.2); // Mage: +20% Base Dmg
-            if (me.avatar === 'cleric') { 
-                me.hp = Math.min(me.maxHp, me.hp + 10); // Cleric: Heal on correct
-                logs.push('💚 HEAL +10');
+            io.to(socket.id).emit('pvpResult', { success: true, damage: finalDmg, myHp: attacker.hp, oppHp: defender.hp });
+            io.to(oppSocketId).emit('pvpResult', { success: false, damage: finalDmg, myHp: defender.hp, oppHp: attacker.hp });
+
+            if (defender.hp <= 0) {
+                io.to(socket.id).emit('pvpEnd', { win: true });
+                io.to(oppSocketId).emit('pvpEnd', { win: false });
+                players[socket.id].inBattle = false;
+                players[oppSocketId].inBattle = false;
+                delete activeBattles[matchId];
             }
-
-            // 2. SPEED BONUS (First Strike)
-            if (timeTaken <= 3.5) {
-                let speedMult = me.avatar === 'rogue' ? 1.8 : 1.5; // Rogue: higher speed bonus
-                dmg = Math.floor(dmg * speedMult);
-                logs.push('⚡ FIRST STRIKE!');
-            }
-
-            // 3. COMBO BONUS
-            if (me.combo > 1) {
-                dmg += (me.combo * 5);
-                logs.push(`🔥 COMBO x${me.combo}`);
-            }
-
-            // 4. CRITICAL HIT
-            if (Math.random() < critChance) {
-                dmg = Math.floor(dmg * 2);
-                logs.push('💥 CRITICAL!');
-            }
-
-            // 5. OPPONENT DEFENSE (Robot)
-            if (opp.avatar === 'robot') {
-                dmg = Math.floor(dmg * 0.8); // Robot takes 20% less damage
-            }
-
-            // APPLY DAMAGE
-            opp.hp -= dmg;
-            logs.push(`-${dmg} HP`);
-            
-            io.to(battle.p1.id).emit('battleUpdate', { action: 'HIT', attacker: myRole, logs, match: battle });
-            io.to(battle.p2.id).emit('battleUpdate', { action: 'HIT', attacker: myRole, logs, match: battle });
-
-            // WIN CONDITION
-            if (opp.hp <= 0) {
-                players[battle[myRole].id].score += 500;
-                players[battle[myRole].id].inBattle = false; players[battle[oppRole].id].inBattle = false;
-                io.to(battle[myRole].id).emit('battleEnd', { result: '🏆 VICTORY' });
-                io.to(battle[oppRole].id).emit('battleEnd', { result: '💀 DEFEAT' });
-                delete activeBattles[battle.id];
-                return;
-            }
-
-            // NEXT QUESTION
-            battle.question = generateBattleQuestion();
-            setTimeout(() => {
-                if(activeBattles[battle.id]) {
-                    io.to(battle.p1.id).emit('nextQuestion', battle.question);
-                    io.to(battle.p2.id).emit('nextQuestion', battle.question);
-                }
-            }, 1000);
-
         } else {
-            me.combo = 0; // Combo Break
-            io.to(pId).emit('battleUpdate', { action: 'MISS', logs: ['❌ MISS! Combo Break'], match: battle });
+            attacker.combo = 0;
+            io.to(socket.id).emit('pvpResult', { success: false, damage: 0, myHp: attacker.hp, oppHp: defender.hp });
         }
     });
 
     socket.on('disconnect', () => {
         matchmakingQueue = matchmakingQueue.filter(id => id !== socket.id);
         delete players[socket.id];
+        io.emit('stateUpdate', players);
     });
 });
 
 setInterval(() => { io.emit('stateUpdate', players); }, 40);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Math Dungeon PvP Online port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Math Dungeon Online running on port ${PORT}`));
