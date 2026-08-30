@@ -1,20 +1,11 @@
 {
   "name": "math-dungeon-online",
-  "version": "1.0.0",
-  "description": "2D Multiplayer Educational RPG Game",
+  "version": "2.0.0",
+  "description": "Classroom RPG and PvP Online System for Mathematics",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [
-    "game",
-    "math",
-    "multiplayer",
-    "socket.io",
-    "canvas"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
