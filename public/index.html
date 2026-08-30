@@ -3,1054 +3,202 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Math Dungeon Online</title>
+<title>Math Dungeon PvP Edition</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;900&display=swap');
+/* CSS พื้นฐานเดิม (ย่อไว้เพื่อความกระชับ) */
+:root { --bg:#05070f; --cyan:#38bdf8; --red:#f43f5e; --green:#10b981; --gold:#fbbf24; }
+* { box-sizing: border-box; font-family: 'Kanit'; user-select: none; }
+body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; }
+#game { position: fixed; inset: 0; }
+.btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); color: white; }
 
-:root {
-    --bg: #05070f;
-    --panel: rgba(12, 17, 33, 0.85);
-    --line: rgba(255, 255, 255, 0.12);
-    --cyan: #38bdf8;
-    --purple: #8b5cf6;
-    --gold: #fbbf24;
-    --green: #10b981;
-    --red: #f43f5e;
-}
+/* PVP Button */
+.pvp-btn { position: fixed; right: 16px; bottom: 80px; background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff; padding: 12px 20px; border-radius: 14px; font-weight: 900; font-size: 16px; border: 2px solid #fda4af; box-shadow: 0 4px 15px rgba(244,63,94,0.5); z-index: 10; cursor: pointer; }
 
-* { box-sizing: border-box; }
-html, body {
-    margin: 0; width: 100%; height: 100%;
-    overflow: hidden; background: var(--bg);
-    color: #fff; font-family: 'Kanit', sans-serif;
-    user-select: none; -webkit-tap-highlight-color: transparent;
-    touch-action: none; /* Prevent browser zooming/scrolling on mobile */
-}
-button, input, select { font: inherit; }
-button { cursor: pointer; }
+/* BATTLE ARENA OVERLAY */
+#battleScreen { position: fixed; inset: 0; background: #070a14; z-index: 50; display: none; flex-direction: column; }
+.battle-header { text-align: center; font-size: 24px; font-weight: 900; color: var(--gold); padding: 10px; background: rgba(0,0,0,0.5); letter-spacing: 2px; }
+.arena { display: flex; justify-content: space-between; padding: 20px; flex: 1; align-items: center; }
+.fighter { width: 45%; background: rgba(30,41,59,0.7); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+.f-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.bar { width: 100%; height: 20px; background: #0f172a; border-radius: 10px; overflow: hidden; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.2); }
+.hp-fill { height: 100%; background: linear-gradient(90deg, #e11d48, #f43f5e); transition: width 0.3s; }
+.en-fill { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s; }
 
-#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #070a14; z-index: 1; }
-#vignette {
-    position: fixed; inset: 0; pointer-events: none;
-    background: radial-gradient(circle at center, transparent 35%, rgba(3, 5, 12, 0.85) 100%);
-    z-index: 2;
-}
+.combat-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; pointer-events: none; }
+.dmg-text { font-size: 40px; font-weight: 900; color: #f43f5e; text-shadow: 0 4px 15px rgba(0,0,0,0.8); opacity: 0; transform: translateY(20px); transition: 0.3s; }
+.dmg-text.show { opacity: 1; transform: translateY(-20px); }
 
-/* UI Overlays */
-.hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-.glass {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-}
+/* BATTLE DASHBOARD */
+.battle-dash { background: #0f172a; padding: 20px; border-top: 2px solid #334155; display: flex; flex-direction: column; align-items: center; }
+.question-box { font-size: 32px; font-weight: 900; color: #fff; background: #1e293b; padding: 10px 40px; border-radius: 12px; margin-bottom: 16px; border: 2px solid var(--cyan); }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 300px; }
+.num-btn { background: #334155; color: #fff; border: none; padding: 15px; font-size: 24px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+.num-btn:active { background: #475569; }
+.num-btn.clear { background: #be123c; }
+.num-btn.submit { background: #059669; }
+.ans-display { font-size: 24px; letter-spacing: 4px; height: 35px; color: var(--gold); margin-bottom: 10px; }
 
-/* Top Bar */
-.top { height: 80px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
-.player-card { height: 56px; min-width: 240px; border-radius: 14px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; }
-.avatar-mini { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #06b6d4); display: grid; place-items: center; font-size: 22px; }
-.pname { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
-.sub { font-size: 11px; color: #94a3b8; }
-.xpbar { width: 110px; height: 5px; background: #1e293b; border-radius: 99px; overflow: hidden; margin-top: 4px; }
-.xpbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--purple), var(--cyan)); border-radius: 99px; transition: width 0.3s ease; }
-
-.spacer { flex: 1; }
-.score { padding: 8px 14px; border-radius: 12px; font-weight: 700; color: var(--gold); font-size: 16px; white-space: nowrap; }
-.mini { width: 150px; height: 56px; border-radius: 14px; overflow: hidden; position: relative; }
-.mini canvas { width: 100%; height: 100%; display: block; }
-.mini-label { position: absolute; left: 8px; top: 4px; font-size: 9px; color: #94a3b8; background: rgba(7, 10, 20, 0.8); padding: 1px 5px; border-radius: 4px; }
-
-.mobile-rank-btn { display: none; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.4); color: var(--gold); padding: 8px 12px; border-radius: 12px; font-weight: 600; font-size: 13px; pointer-events: auto; align-items: center; gap: 4px; }
-
-/* Left Quest Panel */
-.left { position: fixed; left: 16px; top: 96px; width: 275px; pointer-events: none; }
-.quest { border-radius: 16px; padding: 14px; pointer-events: auto; transition: 0.3s ease; }
-.quest-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-.quest-body { transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease; overflow: hidden; max-height: 500px; opacity: 1; margin-top: 8px; }
-.quest.collapsed .quest-body { max-height: 0; opacity: 0; margin-top: 0; }
-.eyebrow { font-size: 10px; color: var(--cyan); letter-spacing: 1px; font-weight: 700; }
-.quest h2 { margin: 2px 0 0; font-size: 15px; }
-.quest p { margin: 0 0 8px; color: #94a3b8; font-size: 12px; }
-.progress { margin-top: 6px; height: 6px; background: #1e293b; border-radius: 99px; overflow: hidden; }
-.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--cyan)); transition: 0.3s ease; }
-.stations { margin-top: 10px; display: grid; gap: 5px; }
-.st { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: rgba(255,255,255,0.02); }
-.st.active { border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.05); }
-.st.done { opacity: 0.8; }
-.dot { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: #1e293b; font-size: 11px; font-weight: bold; }
-.st.done .dot { background: #059669; color: #fff; }
-.st b { font-size: 11px; }
-.st small { display: block; color: #64748b; font-size: 9px; }
-
-/* Right Leaderboard */
-.right { position: fixed; right: 16px; top: 96px; width: 240px; pointer-events: none; }
-.board { border-radius: 16px; padding: 12px; pointer-events: auto; }
-.board h3 { margin: 0 0 6px; font-size: 13px; color: var(--gold); }
-.rank { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; }
-.rank:nth-child(2) { background: rgba(255, 255, 255, 0.03); }
-.rankno { width: 20px; color: #64748b; font-size: 11px; font-weight: bold; }
-.rankname { flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rankscore { font-size: 11px; color: var(--gold); font-weight: 700; }
-
-/* Bottom Spell Forge */
-.bottom { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(740px, calc(100% - 24px)); pointer-events: auto; }
-.forge { border-radius: 18px; padding: 10px 14px; }
-.forge-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.forge-title { font-weight: 700; font-size: 13px; }
-.eq { min-height: 48px; border-radius: 10px; background: rgba(3, 5, 10, 0.5); border: 1px dashed #334155; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; overflow-x: auto; }
-.tile { min-width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: .12s; border: 1px solid rgba(255,255,255,0.2); }
-.tile:hover { transform: translateY(-2px) scale(1.05); filter: brightness(1.2); }
-.num { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #0f172a; }
-.op { background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff; }
-.eqtile { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #0f172a; }
-.inv { display: flex; gap: 5px; justify-content: center; min-height: 42px; padding-top: 6px; flex-wrap: wrap; }
-.actions { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
-.btn { border: 1px solid var(--line); border-radius: 10px; padding: 7px 16px; color: white; background: #1e293b; font-weight: 700; font-size: 13px; transition: 0.2s; }
-.btn.primary { background: linear-gradient(135deg, #6366f1, #06b6d4); border: 0; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
-.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
-
-/* Dynamic Floating Virtual Joystick */
-.touch-controller {
-    position: fixed; width: 120px; height: 120px;
-    background: rgba(255, 255, 255, 0.02); border: 2px solid rgba(56, 189, 248, 0.2);
-    border-radius: 50%; pointer-events: none; display: none; z-index: 20;
-    backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.15s ease;
-    transform: translate(-50%, -50%); /* Center on touch */
-}
-.touch-controller.active { opacity: 1; display: block; }
-.joystick-thumb { 
-    position: absolute; top: 28px; left: 28px; width: 64px; height: 64px; 
-    background: radial-gradient(circle at 35% 35%, #38bdf8, #0284c7); 
-    border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-}
-
-/* Toasts & Notifications */
-.toast { position: fixed; left: 50%; top: 85px; transform: translate(-50%, -15px) scale(.95); opacity: 0; padding: 10px 20px; border-radius: 12px; background: rgba(12, 17, 33, 0.95); border: 1px solid rgba(255,255,255,0.15); transition: .25s; pointer-events: none; text-align: center; z-index: 25; backdrop-filter: blur(10px); }
-.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-.toast b { display: block; font-size: 14px; }
-.toast span { font-size: 11px; color: #94a3b8; }
-
-#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 40; }
-.levelup { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7); opacity: 0; z-index: 41; text-align: center; pointer-events: none; transition: .35s; text-shadow: 0 4px 20px rgba(251, 191, 36, 0.6); }
-.levelup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.levelup strong { font-size: 46px; color: var(--gold); font-weight: 800; letter-spacing: 2px; }
-.levelup div { font-size: 16px; color: #fff; margin-top: -5px; }
-
-/* Modals */
-.modal { position: fixed; inset: 0; background: rgba(3, 5, 12, 0.88); display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px; backdrop-filter: blur(10px); }
-.modal.show { display: flex; }
-.modalbox { width: min(460px, 100%); border-radius: 20px; padding: 24px; background: linear-gradient(180deg, #10172a, #070a14); border: 1px solid rgba(255, 255, 255, 0.1); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
-.seal { width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 12px; display: grid; place-items: center; font-size: 26px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); }
-.modal h1 { text-align: center; font-size: 22px; margin: 2px 0; color: #fff; }
-.modal p { text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 16px; }
-.code { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155; background: rgba(3, 5, 10, 0.8); color: white; text-align: center; font-size: 20px; letter-spacing: 3px; outline: none; text-transform: uppercase; font-family: 'Kanit'; transition: 0.2s; }
-.code:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
-.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
-.modal-actions button { flex: 1; padding: 12px; font-size: 14px; }
-.close { background: #1e293b; }
-
-/* Customization Grid */
-.name-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.name-grid label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-.name-grid input, .name-grid select { width: 100%; margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: rgba(3, 5, 10, 0.8); color: white; outline: none; font-family: 'Kanit'; font-size: 13px; }
-.name-grid input:focus, .name-grid select:focus { border-color: var(--purple); }
-.full { grid-column: 1 / -1; }
-.hintbox { margin-top: 12px; background: rgba(3, 5, 10, 0.6); border-radius: 8px; padding: 8px; font-size: 11px; color: #64748b; text-align: center; border: 1px dashed #334155; }
-
-/* Responsive Adjustments */
-@media(max-width: 1000px) { 
-    .right { display: none; } 
-    .left { width: 240px; } 
-    .mini { display: none; } 
-    .player-card { min-width: 190px; } 
-    .bottom { bottom: 10px; } 
-    .mobile-rank-btn { display: flex; } 
-}
-@media(max-width: 720px) { 
-    .top { padding: 8px; gap: 6px; } 
-    .player-card { min-width: 0; flex: 1; } 
-    .player-card .sub, .xpbar { display: none; } 
-    .score { font-size: 13px; padding: 6px 10px; } 
-    .left { left: 8px; top: 76px; width: 200px; } 
-    .bottom { width: calc(100% - 16px); } 
-}
+/* Result Modal */
+#resultModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 60; display: none; place-items: center; }
+.result-box { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 2px solid var(--gold); }
+.result-title { font-size: 48px; font-weight: 900; margin: 0 0 20px 0; }
 </style>
 </head>
 <body>
 
-    <!-- Game Canvas Layer -->
-    <canvas id="game"></canvas>
-    <div id="vignette"></div>
-
-    <!-- Virtual Joystick -->
-    <div class="touch-controller" id="touchController">
-        <div class="joystick-thumb" id="joystickThumb"></div>
+    <!-- UI เดิมเบื้องต้น -->
+    <div id="nameModal" style="position:fixed;inset:0;background:#000;z-index:99;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#1e293b;padding:20px;border-radius:10px;text-align:center;">
+            <h2>เข้าเกม</h2>
+            <input id="nameInput" placeholder="ชื่อ" style="padding:10px;font-size:16px;">
+            <button onclick="joinGame()" class="btn primary">เริ่มเกม</button>
+        </div>
     </div>
 
-    <!-- Main UI -->
-    <div class="hud">
-        <!-- Top Bar -->
-        <div class="top">
-            <div class="player-card glass">
-                <div id="avatarMini" class="avatar-mini">🧙</div>
-                <div style="min-width:0">
-                    <div class="pname" id="playerName">ยังไม่เชื่อมต่อ</div>
-                    <div class="sub">LV.<b id="level">1</b> · <span id="completed">0/5</span> ฐาน</div>
-                    <div class="xpbar"><i id="xpFill"></i></div>
-                </div>
-            </div>
-            <div class="spacer"></div>
-            <button class="mobile-rank-btn glass" onclick="playSound('click'); toggleMobileRankModal()">🏆 แรงค์</button>
-            <div class="score glass">🏆 <span id="score">0</span></div>
-            <div class="mini glass"><canvas id="miniCanvas"></canvas><span class="mini-label">MINI MAP</span></div>
-        </div>
+    <!-- ปุ่มเรียก PvP -->
+    <button class="pvp-btn" onclick="startMatchmaking()">⚔️ QUICK DUEL</button>
 
-        <!-- Left Quest -->
-        <div class="left">
-            <div class="quest glass" id="questBox">
-                <div class="quest-header" onclick="toggleQuest()">
-                    <div>
-                        <div class="eyebrow">MAIN QUEST</div>
-                        <h2 id="questTitle">ประตูแห่งสมการ</h2>
-                    </div>
-                    <span id="questToggleIcon" style="font-size: 14px; color: var(--cyan); font-weight: bold; background: rgba(56,189,248,0.1); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 1px solid rgba(56,189,248,0.3);">▲</span>
-                </div>
-                <div class="quest-body" id="questBody">
-                    <p id="questDesc">เดินทางไปที่แท่นและกรอกรหัสผ่านจากครู</p>
-                    <div class="progress"><i id="questProgress"></i></div>
-                    <div class="stations" id="stations"></div>
-                </div>
+    <!-- หน้าจอต่อสู้ -->
+    <div id="battleScreen">
+        <div class="battle-header">🔥 MATH BATTLE 🔥</div>
+        <div class="arena">
+            <div class="fighter" id="myFighter">
+                <div class="f-name">YOU</div>
+                <div class="bar"><div class="hp-fill" id="myHp"></div></div>
+                <div class="bar" style="height:10px;"><div class="en-fill" id="myEn"></div></div>
+            </div>
+            
+            <div class="fighter" id="oppFighter" style="text-align:right;">
+                <div class="f-name" id="oppName">OPPONENT</div>
+                <div class="bar"><div class="hp-fill" id="oppHp"></div></div>
+                <div class="bar" style="height:10px;"><div class="en-fill" id="oppEn"></div></div>
+            </div>
+
+            <div class="combat-center">
+                <div class="dmg-text" id="dmgText">-25</div>
             </div>
         </div>
 
-        <!-- Right Leaderboard -->
-        <div class="right">
-            <div class="board glass">
-                <h3>🏆 HALL OF HEROES</h3>
-                <div id="leaderboard"></div>
-            </div>
-        </div>
-
-        <!-- Bottom Spell Forge -->
-        <div class="bottom">
-            <div class="forge glass">
-                <div class="forge-head">
-                    <div class="forge-title">✨ SPELL FORGE <span class="sub" style="font-weight:normal; margin-left:6px;">ประกอบสมการเวทมนตร์</span></div>
-                </div>
-                <div class="eq" id="eq"></div>
-                <div class="inv" id="inv"></div>
-                <div class="actions">
-                    <button class="btn" onclick="playSound('click'); clearEquation()">↩ ล้างสมการ</button>
-                    <button class="btn primary" onclick="playSound('click'); castSpell()">✨ ร่ายคาถา</button>
-                </div>
+        <div class="battle-dash">
+            <div class="question-box" id="battleQuestion">รอโจทย์...</div>
+            <div class="ans-display" id="ansDisplay"></div>
+            <div class="numpad">
+                <button class="num-btn" onclick="typeNum(1)">1</button>
+                <button class="num-btn" onclick="typeNum(2)">2</button>
+                <button class="num-btn" onclick="typeNum(3)">3</button>
+                <button class="num-btn" onclick="typeNum(4)">4</button>
+                <button class="num-btn" onclick="typeNum(5)">5</button>
+                <button class="num-btn" onclick="typeNum(6)">6</button>
+                <button class="num-btn" onclick="typeNum(7)">7</button>
+                <button class="num-btn" onclick="typeNum(8)">8</button>
+                <button class="num-btn" onclick="typeNum(9)">9</button>
+                <button class="num-btn clear" onclick="typeNum('C')">C</button>
+                <button class="num-btn" onclick="typeNum(0)">0</button>
+                <button class="num-btn submit" onclick="submitAns()">✓</button>
             </div>
         </div>
     </div>
 
-    <!-- Modals & Notifications -->
-    <div id="toast" class="toast"><b id="toastTitle"></b><span id="toastText"></span></div>
-    <div id="flash"></div>
-    <div id="levelup" class="levelup"><strong>LEVEL UP!</strong><div>พลังเวทมนตร์ของคุณเพิ่มขึ้นแล้ว</div></div>
-
-    <!-- Mobile Rank Modal -->
-    <div id="mobileRankModal" class="modal">
-        <div class="modalbox">
-            <div class="seal">🏆</div>
-            <h1>HALL OF HEROES</h1>
-            <p>ตารางอันดับคะแนนผู้เล่นทั้งหมด</p>
-            <div id="mobileLeaderboardList" style="max-height: 320px; overflow-y: auto; margin: 10px 0; display: grid; gap: 6px;"></div>
-            <button class="btn primary" style="width:100%; margin-top:8px;" onclick="playSound('click'); toggleMobileRankModal()">ปิดหน้าต่าง</button>
-        </div>
-    </div>
-
-    <!-- Station Unlock Modal -->
-    <div id="stationModal" class="modal">
-        <div class="modalbox">
-            <div class="seal">🔐</div>
-            <h1 id="stationName">ปลดล็อกฐาน</h1>
-            <p>กรอกรหัส Access Code จากใบงานของคุณครู</p>
-            <input id="codeInput" class="code" maxlength="40" autocomplete="off" placeholder="CODE">
-            <div class="modal-actions">
-                <button class="btn close" onclick="playSound('click'); closeStation()">ยกเลิก</button>
-                <button class="btn primary" onclick="playSound('click'); submitCode()">🔓 ยืนยันรหัสผ่าน</button>
-            </div>
-            <div class="hintbox">ระบบความปลอดภัยตรวจสอบรหัสผ่านเซิร์ฟเวอร์</div>
-        </div>
-    </div>
-
-    <!-- Registration Modal -->
-    <div id="nameModal" class="modal show">
-        <div class="modalbox">
-            <div class="seal">🏰</div>
-            <h1>Math Dungeon Online</h1>
-            <p>ระบุตัวตนและชุดเกราะเพื่อเข้าสู่ดันเจี้ยน</p>
-            <div class="name-grid">
-                <div class="full">
-                    <label>ชื่อผู้เล่น / ฉายา</label>
-                    <input id="nameInput" maxlength="18" placeholder="เช่น อัศวินคณิตศาสตร์" autocomplete="off">
-                </div>
-                <div>
-                    <label>สายตัวละคร (Avatar)</label>
-                    <select id="avatarInput">
-                        <option value="hero">⚔️ Guardian (นักรบ)</option>
-                        <option value="wizard">🧙 Mage (จอมเวท)</option>
-                        <option value="robot">🤖 Arcane Bot (โกเลม)</option>
-                        <option value="rogue">🗡️ Rogue (โจรเงา)</option>
-                        <option value="cleric">🛡️ Cleric (นักบวช)</option>
-                    </select>
-                </div>
-                <div>
-                    <label>หมวก (Headgear)</label>
-                    <select id="hatInput">
-                        <option value="none">ไม่มีหมวก</option>
-                        <option value="wizard_hat">หมวกพ่อมดทรงสูง</option>
-                        <option value="cap">หมวกแก๊ปเกราะ</option>
-                        <option value="crown">มงกุฎทองคำ</option>
-                        <option value="hood">ฮู้ดนักฆ่าปิดหน้า</option>
-                    </select>
-                </div>
-                <div>
-                    <label>เสื้อ (Armor)</label>
-                    <select id="shirtInput">
-                        <option value="shirt1">เสื้อเกราะคลาสสิก (Indigo)</option>
-                        <option value="shirt2">เสื้อคลุมจอมเวท (Purple)</option>
-                        <option value="shirt3">เสื้อเกราะเหล็ก (Cyan)</option>
-                        <option value="shirt4">เสื้อนักรบโบราณ (Amber)</option>
-                        <option value="shirt5">ชุดสูทเวทมนตร์ (Emerald)</option>
-                    </select>
-                </div>
-                <div>
-                    <label>กางเกง (Legs)</label>
-                    <select id="pantsInput">
-                        <option value="pants1">กางเกงผ้าฝ้ายดำ</option>
-                        <option value="pants2">กางเกงเกราะหนัง</option>
-                        <option value="pants3">กางเกงเหล็กกล้า</option>
-                        <option value="pants4">กางเกงนักรบมืด</option>
-                        <option value="pants5">กางเกงเวทมนตร์น้ำเงิน</option>
-                    </select>
-                </div>
-                <div class="full">
-                    <label>รองเท้า (Boots)</label>
-                    <select id="shoesInput">
-                        <option value="shoes1">รองเท้าหนังธรรมดา</option>
-                        <option value="shoes2">รองเท้าบู๊ตนักเดินทาง</option>
-                        <option value="shoes3">รองเท้าเกราะเหล็ก</option>
-                        <option value="shoes4">รองเท้าเวทมนตร์ลมกรด</option>
-                        <option value="shoes5">รองเท้าทองคำศักดิ์สิทธิ์</option>
-                    </select>
-                </div>
-            </div>
-            <button class="btn primary" style="width:100%; margin-top:16px; padding:14px; font-size:16px;" onclick="joinGame()">⚔️ เข้าสู่ดันเจี้ยน</button>
-            <div class="hintbox">WASD หรือ แตะหน้าจอเพื่อบังคับทิศทาง</div>
+    <!-- สรุปผล -->
+    <div id="resultModal">
+        <div class="result-box">
+            <h1 class="result-title" id="resultTitle">VICTORY</h1>
+            <button class="btn primary" onclick="closeBattle()">กลับสู่แผนที่</button>
         </div>
     </div>
 
     <script>
-        // --- 1. System Init ---
         const socket = io();
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency background
-        
-        const mini = document.createElement('canvas');
-        mini.className = 'mini';
-        document.querySelector('.mini').replaceWith(mini);
-        const mctx = mini.getContext('2d');
+        let myRole = '';
+        let currentAns = '';
 
-        let W = innerWidth, H = innerHeight;
-        let dpr = window.devicePixelRatio > 1 ? 1.5 : 1; // Cap DPR for performance
-        let world = { width: 4000, height: 4000 };
-        
-        let stations = [], tiles = [], players = {};
-        let renderPlayers = {}; // For interpolation
-        let me = null, myId = null, started = false, currentStation = null;
-        let inventory = [], equation = [];
-        
-        const keys = { w: false, a: false, s: false, d: false };
-        const particles = [];
-        const floatingTexts = [];
-        const camera = { x: 0, y: 0 };
-
-        // Optimization limits
-        let lastSendTime = 0;
-        let modalCooldown = 0;
-
-        // --- Audio System ---
-        let audioCtx = null;
-        function playSound(type) {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                const now = audioCtx.currentTime;
-
-                if (type === 'collect') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-                    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-                    osc.start(now); osc.stop(now + 0.12);
-                } else if (type === 'success') {
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554.37, now + 0.08); osc.frequency.setValueAtTime(659.25, now + 0.16);
-                    gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                    osc.start(now); osc.stop(now + 0.3);
-                } else if (type === 'click') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(150, now + 0.03);
-                    gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-                    osc.start(now); osc.stop(now + 0.03);
-                }
-            } catch (e) {}
-        }
-
-        // --- Screen & Resize ---
-        let cachedWorldGradient = null;
-        function updateWorldGradient() {
-            cachedWorldGradient = ctx.createLinearGradient(0, 0, world.width, world.height);
-            cachedWorldGradient.addColorStop(0, '#0a0f20'); 
-            cachedWorldGradient.addColorStop(0.5, '#0e152d'); 
-            cachedWorldGradient.addColorStop(1, '#070a14');
-        }
-
-        function resize() {
-            W = innerWidth; H = innerHeight;
-            canvas.width = W * dpr; canvas.height = H * dpr;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            
-            mini.width = 150 * dpr; mini.height = 56 * dpr;
-            mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            updateWorldGradient();
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // --- Input Controls (Keyboard) ---
-        function setKey(k, v) {
-            k = k.toLowerCase();
-            if (k === 'w' || k === 'arrowup') keys.w = v;
-            if (k === 's' || k === 'arrowdown') keys.s = v;
-            if (k === 'a' || k === 'arrowleft') keys.a = v;
-            if (k === 'd' || k === 'arrowright') keys.d = v;
-        }
-        window.addEventListener('keydown', e => {
-            if (started) {
-                setKey(e.key, true);
-                if (e.key === 'Enter' && document.getElementById('stationModal').classList.contains('show')) submitCode();
-            }
-        });
-        window.addEventListener('keyup', e => setKey(e.key, false));
-
-        // --- Input Controls (Dynamic Virtual Joystick) ---
-        let joystickActive = false;
-        let joystickTouchId = null;
-        let joyOriginX = 0, joyOriginY = 0;
-        let joystickVector = { x: 0, y: 0 };
-        const JOY_MAX_RADIUS = 32;
-
-        window.addEventListener('touchstart', e => {
-            if (!started) return;
-            // Ignore touches on UI elements
-            if (e.target.closest('button, input, select, .modal, .forge, .quest, .board, .player-card, .score')) return;
-            if (joystickActive) return;
-
-            const touch = e.touches[0];
-            joystickActive = true;
-            joystickTouchId = touch.identifier;
-            joyOriginX = touch.clientX;
-            joyOriginY = touch.clientY;
-
-            const joyZone = document.getElementById('touchController');
-            joyZone.style.left = joyOriginX + 'px';
-            joyZone.style.top = joyOriginY + 'px';
-            joyZone.classList.add('active');
-
-            joystickVector = { x: 0, y: 0 };
-            document.getElementById('joystickThumb').style.transform = `translate(0px, 0px)`;
-        }, {passive: false});
-
-        window.addEventListener('touchmove', e => {
-            if (!joystickActive) return;
-            // Prevent scrolling while moving joystick
-            if (e.target === canvas) e.preventDefault(); 
-            
-            for (let i = 0; i < e.touches.length; i++) {
-                const touch = e.touches[i];
-                if (touch.identifier === joystickTouchId) {
-                    let dx = touch.clientX - joyOriginX;
-                    let dy = touch.clientY - joyOriginY;
-                    let distance = Math.hypot(dx, dy);
-                    
-                    if (distance > JOY_MAX_RADIUS) {
-                        dx = (dx / distance) * JOY_MAX_RADIUS;
-                        dy = (dy / distance) * JOY_MAX_RADIUS;
-                    }
-                    document.getElementById('joystickThumb').style.transform = `translate(${dx}px, ${dy}px)`;
-                    joystickVector.x = dx / JOY_MAX_RADIUS;
-                    joystickVector.y = dy / JOY_MAX_RADIUS;
-                    break;
-                }
-            }
-        }, {passive: false});
-
-        window.addEventListener('touchend', e => {
-            if (!joystickActive) return;
-            let stillActive = false;
-            for (let i = 0; i < e.touches.length; i++) {
-                if (e.touches[i].identifier === joystickTouchId) stillActive = true;
-            }
-            if (!stillActive) {
-                joystickActive = false;
-                joystickVector = { x: 0, y: 0 };
-                document.getElementById('joystickThumb').style.transform = `translate(0px, 0px)`;
-                document.getElementById('touchController').classList.remove('active');
-            }
-        });
-
-        // --- Game Setup & Modals ---
         function joinGame() {
-            playSound('click');
-            const nameInput = document.getElementById('nameInput');
-            const name = nameInput.value.trim();
-            
-            if (!name) { 
-                alert('กรุณากรอกชื่อผู้เล่นก่อนเข้าสู่ดันเจี้ยน'); 
-                nameInput.focus(); 
-                return; 
-            }
-
-            socket.emit('setupPlayer', {
-                name: name,
-                avatar: document.getElementById('avatarInput').value,
-                hat: document.getElementById('hatInput').value,
-                shirt: document.getElementById('shirtInput').value,
-                pants: document.getElementById('pantsInput').value,
-                shoes: document.getElementById('shoesInput').value
-            });
-
-            // บังคับซ่อนหน้าต่าง
-            const modal = document.getElementById('nameModal');
-            modal.classList.remove('show');
-            modal.style.display = 'none'; 
-            
-            started = true;
-            
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            socket.emit('setupPlayer', { name: document.getElementById('nameInput').value || 'Hero' });
+            document.getElementById('nameModal').style.display = 'none';
         }
 
-        // รองรับการกดปุ่ม Enter เพื่อเข้าเกม
-        document.getElementById('nameInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter') joinGame();
+        function startMatchmaking() {
+            socket.emit('findMatch');
+            document.querySelector('.pvp-btn').innerText = '⏳ SEARCHING...';
+        }
+
+        // เริ่มต่อสู้
+        socket.on('battleStart', data => {
+            document.getElementById('battleScreen').style.display = 'flex';
+            document.querySelector('.pvp-btn').style.display = 'none';
+            myRole = data.me;
+            
+            document.getElementById('oppName').innerText = data.opponent.name;
+            document.getElementById('myHp').style.width = '100%';
+            document.getElementById('oppHp').style.width = '100%';
+            document.getElementById('myEn').style.width = '0%';
+            document.getElementById('oppEn').style.width = '0%';
+            
+            document.getElementById('battleQuestion').innerText = data.match.question.text;
+            currentAns = ''; document.getElementById('ansDisplay').innerText = '';
         });
 
-        let questOpen = true;
-        function toggleQuest() {
-            questOpen = !questOpen;
-            const box = document.getElementById('questBox');
-            const icon = document.getElementById('questToggleIcon');
-            if (questOpen) { box.classList.remove('collapsed'); icon.textContent = '▲'; }
-            else { box.classList.add('collapsed'); icon.textContent = '▼'; }
-            playSound('click');
+        // Numpad Logic
+        function typeNum(n) {
+            if(n === 'C') currentAns = '';
+            else if(currentAns.length < 5) currentAns += n;
+            document.getElementById('ansDisplay').innerText = currentAns;
         }
 
-        function toggleMobileRankModal() {
-            document.getElementById('mobileRankModal').classList.toggle('show');
+        function submitAns() {
+            if(currentAns === '') return;
+            socket.emit('submitBattleAnswer', currentAns);
+            currentAns = ''; document.getElementById('ansDisplay').innerText = '';
         }
 
-        // --- Socket Listeners ---
-        socket.on('initGame', d => {
-            myId = d.id; world = d.world; stations = d.stations; tiles = d.tiles;
-            updateWorldGradient(); renderStations();
-        });
-
-        socket.on('playerReady', d => {
-            me = d.player; updateUI();
-            showToast('เข้าสู่ระบบ', 'อัศวิน ' + me.name + ' เริ่มต้นการผจญภัย', 'cyan');
-        });
-
-        socket.on('stateUpdate', p => {
-            players = p;
-            if (players[myId]) {
-                const oldLevel = me ? me.level : 1;
-                me = players[myId];
-                if (me.level > oldLevel) levelUp();
-                updateUI();
-            }
-        });
-
-        socket.on('leaderboard', list => {
-            const html = list.map(p => `
-                <div class="rank">
-                    <span class="rankno">${p.rank === 1 ? '👑' : String(p.rank).padStart(2, '0')}</span>
-                    <span class="rankname">${esc(p.name)}</span>
-                    <span class="rankscore">${p.score.toLocaleString()}</span>
-                </div>
-            `).join('') || '<div class="sub" style="text-align:center;">ยังไม่มีฮีโร่...</div>';
-            document.getElementById('leaderboard').innerHTML = html;
-            document.getElementById('mobileLeaderboardList').innerHTML = html;
-        });
-
-        socket.on('tileCollected', t => {
-            inventory.push(t); renderForge();
-            burst(t.x, t.y, '#fbbf24', 12);
-            spawnFloatingText('+Rune', t.x, t.y, '#fbbf24');
-            playSound('collect');
-        });
-
-        socket.on('tileRemoved', id => tiles = tiles.filter(t => t.id !== id));
-        socket.on('newTile', t => tiles.push(t));
-
-        socket.on('stationPrompt', d => {
-            currentStation = d.stationId;
-            document.getElementById('stationName').textContent = '🔐 ' + d.name;
-            document.getElementById('codeInput').value = '';
-            document.getElementById('stationModal').classList.add('show');
-            setTimeout(() => document.getElementById('codeInput').focus(), 50);
-        });
-
-        socket.on('stationResult', r => {
-            if (r.success) {
-                closeStation();
-                if (r.already) {
-                    showToast('พื้นที่เปิดแล้ว', 'คุณได้เคลียร์ฐานนี้ไปแล้ว', 'cyan');
-                } else {
-                    burst(me.x, me.y, '#10b981', 30);
-                    spawnFloatingText('+' + r.reward + ' Pts', me.x, me.y - 40, '#10b981');
-                    flash(); playSound('success');
-                    showToast('ปลดล็อกสำเร็จ!', '+' + r.reward + ' คะแนน', 'green');
-                }
-                renderStations();
-            } else {
-                showToast('รหัสผ่านไม่ถูกต้อง', r.msg, 'red');
-            }
-        });
-
-        socket.on('equationResult', r => {
-            if (r.success) {
-                equation = []; renderForge();
-                playSound('success');
-                showToast('ร่ายคาถาสัมฤทธิ์ผล!', 'รับคะแนนและค่าประสบการณ์', 'purple');
-                burst(me.x, me.y, '#8b5cf6', 25);
-                spawnFloatingText('+Spell Bonus!', me.x, me.y - 40, '#8b5cf6');
-            } else {
-                showToast('คาถาล้มเหลว', r.msg, 'red');
-            }
-        });
-
-        socket.on('stationWorldUpdate', d => {
-            const st = stations.find(s => s.id === d.stationId);
-            if (st) burst(st.x, st.y, '#10b981', 25);
-        });
-
-        // --- Logic & UI Updates ---
-        function submitCode() {
-            if (!currentStation) return;
-            socket.emit('submitStationCode', { stationId: currentStation, code: document.getElementById('codeInput').value });
-        }
-        function closeStation() {
-            document.getElementById('stationModal').classList.remove('show');
-            modalCooldown = Date.now() + 4000;
-        }
-
-        function updateUI() {
-            if (!me) return;
-            document.getElementById('playerName').textContent = me.name;
-            document.getElementById('level').textContent = me.level;
-            document.getElementById('score').textContent = me.score.toLocaleString();
-            document.getElementById('completed').textContent = me.completed + '/5';
-            document.getElementById('questProgress').style.width = (me.completed / 5 * 100) + '%';
-            
-            const xpPercentage = (me.xp % 500) / 5; // Assumes 500xp per level for progress bar visual
-            document.getElementById('xpFill').style.width = xpPercentage + '%';
-            
-            const avatarIcons = { hero: '⚔️', wizard: '🧙', robot: '🤖', rogue: '🗡️', cleric: '🛡️' };
-            document.getElementById('avatarMini').textContent = avatarIcons[me.avatar] || '🧙';
-            
-            const next = stations.find(s => s.id === me.completed + 1);
-            document.getElementById('questTitle').textContent = next ? next.name : 'ชัยชนะสมบูรณ์แบบ!';
-            document.getElementById('questDesc').textContent = next ? 'เดินทางไปที่แท่นและกรอกรหัส' : 'คุณพิชิตทุกฐานการเรียนรู้เรียบร้อยแล้ว!';
-            renderStations();
-        }
-
-        function renderStations() {
-            const done = me?.completed || 0;
-            document.getElementById('stations').innerHTML = stations.map(s => {
-                const isDone = me?.completed >= s.id;
-                const active = !isDone && s.id === done + 1;
-                return `
-                    <div class="st ${isDone ? 'done' : ''} ${active ? 'active' : ''}">
-                        <div class="dot">${isDone ? '✓' : s.id}</div>
-                        <div><b>${esc(s.name)}</b><small>${isDone ? 'ปลดล็อกแล้ว' : active ? 'ภารกิจปัจจุบัน' : 'ล็อกอยู่'}</small></div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderForge() {
-            const box = document.getElementById('eq'), inv = document.getElementById('inv');
-            box.innerHTML = equation.map((t, i) => tileEl(t, `eq_${i}`)).join('');
-            inv.innerHTML = inventory.map((t, i) => tileEl(t, `inv_${i}`)).join('') || '<span class="sub" style="margin-top:10px;">เดินเก็บ Rune บนแผนที่เพื่อใช้สร้างสมการ</span>';
-        }
-
-        function tileEl(t, domId) {
-            return `<button class="tile ${t.type === 'num' ? 'num' : t.type === 'op' ? 'op' : 'eqtile'}" data-id="${t.id}">${esc(t.char)}</button>`;
-        }
-
-        document.addEventListener('click', e => {
-            const b = e.target.closest('.tile');
-            if (!b) return;
-            const id = Number(b.dataset.id);
-            
-            const inInv = inventory.findIndex(x => x.id === id);
-            if (inInv !== -1) {
-                playSound('click');
-                equation.push(inventory.splice(inInv, 1)[0]);
-                renderForge(); return;
-            }
-            
-            const inEq = equation.findIndex(x => x.id === id);
-            if (inEq !== -1) {
-                playSound('click');
-                inventory.push(equation.splice(inEq, 1)[0]);
-                renderForge();
-            }
-        });
-
-        function clearEquation() {
-            if(equation.length > 0) {
-                inventory = inventory.concat(equation);
-                equation = [];
-                renderForge();
-            }
-        }
-        function castSpell() {
-            if (!equation.length) return showToast('ช่องสมการว่างเปล่า', 'กรุณานำ Rune มาประกอบกันก่อน', 'red');
-            socket.emit('submitEquation', equation.map(t => t.char).join(''));
-        }
-
-        // --- Visual Effects ---
-        function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-        function showToast(title, text, colorCode) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastTitle').textContent = title;
-            document.getElementById('toastText').textContent = text;
-            const colors = { red: 'rgba(244,63,94,0.5)', green: 'rgba(16,185,129,0.5)', gold: 'rgba(251,191,36,0.5)', cyan: 'rgba(56,189,248,0.5)', purple: 'rgba(139,92,246,0.5)'};
-            t.style.borderColor = colors[colorCode] || colors.cyan;
-            t.classList.add('show');
-            clearTimeout(showToast.tm);
-            showToast.tm = setTimeout(() => t.classList.remove('show'), 2500);
-        }
-        function flash() {
-            const f = document.getElementById('flash');
-            f.animate([{ opacity: .6 }, { opacity: 0 }], { duration: 400 });
-        }
-        function levelUp() {
-            const l = document.getElementById('levelup');
-            l.classList.add('show'); flash();
-            setTimeout(() => l.classList.remove('show'), 2000);
-        }
-        function burst(x, y, c, n) {
-            for (let i = 0; i < n; i++) {
-                const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 5;
-                particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c, size: 2 + Math.random() * 3 });
-            }
-        }
-        function spawnFloatingText(text, x, y, color) {
-            floatingTexts.push({ text, x, y, vy: -1.5, life: 1, color });
-        }
-
-        // --- Main Rendering (Canvas) ---
-        function drawWorld() {
-            // Fill background baseline
-            ctx.fillStyle = '#070a14';
-            ctx.fillRect(0, 0, W, H);
-            
-            // Camera follow
-            camera.x = me ? me.x - W / 2 : 2000;
-            camera.y = me ? me.y - H / 2 : 2000;
-            camera.x = Math.max(0, Math.min(world.width - W, camera.x));
-            camera.y = Math.max(0, Math.min(world.height - H, camera.y));
-            
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-
-            // Draw World Gradient
-            ctx.fillStyle = cachedWorldGradient || '#0a0f20';
-            ctx.fillRect(0, 0, world.width, world.height);
-
-            // Draw Infinite-feeling Grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            // Optimize: Only draw grid lines visible in camera view
-            let startX = Math.floor(camera.x / 200) * 200;
-            let startY = Math.floor(camera.y / 200) * 200;
-            for (let x = startX; x <= camera.x + W; x += 200) { ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + H); }
-            for (let y = startY; y <= camera.y + H; y += 200) { ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + W, y); }
-            ctx.stroke();
-
-            // Decorative Map Elements (Castle area)
-            ctx.fillStyle = 'rgba(17, 24, 45, 0.5)';
-            ctx.fillRect(1850, 1850, 300, 300);
-            ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(1850, 1850, 300, 300);
-            
-            // Draw Stations
-            stations.forEach(s => {
-                const done = me?.completed >= s.id;
-                ctx.save();
-                ctx.translate(s.x, s.y);
-                ctx.strokeStyle = s.color;
-                ctx.lineWidth = done ? 2 : 4;
-                ctx.globalAlpha = done ? 0.4 : 1;
-                // Outer ring
-                ctx.beginPath(); ctx.arc(0, 0, 55, 0, Math.PI * 2); ctx.stroke();
-                // Inner core
-                ctx.fillStyle = 'rgba(7, 10, 20, 0.8)';
-                ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
-                // Text
-                ctx.fillStyle = s.color;
-                ctx.font = 'bold 20px Kanit';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(done ? '✓' : s.id, 0, 1);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 13px Kanit';
-                ctx.fillText(s.name, 0, -70);
-                ctx.restore();
-            });
-
-            // Draw Runes (Tiles)
-            tiles.forEach(t => {
-                // Optimization: Cull tiles outside view
-                if (t.x < camera.x - 20 || t.x > camera.x + W + 20 || t.y < camera.y - 20 || t.y > camera.y + H + 20) return;
+        // อัปเดตการโจมตี
+        socket.on('battleUpdate', data => {
+            if (data.action === 'HIT') {
+                const isMeAttacking = (data.attacker === myRole);
+                const oppRole = myRole === 'p1' ? 'p2' : 'p1';
                 
-                ctx.fillStyle = t.type === 'num' ? '#fbbf24' : t.type === 'op' ? '#f43f5e' : '#38bdf8';
-                ctx.beginPath(); ctx.arc(t.x, t.y, 14, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#0f172a';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(t.char, t.x, t.y + 1);
-                
-                // Glow effect
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
+                // อัปเดตหลอดเลือด
+                document.getElementById('myHp').style.width = data.match[myRole].hp + '%';
+                document.getElementById('oppHp').style.width = data.match[oppRole].hp + '%';
+                document.getElementById('myEn').style.width = data.match[myRole].energy + '%';
+                document.getElementById('oppEn').style.width = data.match[oppRole].energy + '%';
 
-            // Player Interpolation & Rendering
-            for (let id in players) {
-                let p = players[id];
-                if (!renderPlayers[id]) {
-                    // New player
-                    renderPlayers[id] = { ...p };
-                } else {
-                    // Interpolate position (lerp)
-                    renderPlayers[id].x += (p.x - renderPlayers[id].x) * 0.35;
-                    renderPlayers[id].y += (p.y - renderPlayers[id].y) * 0.35;
-                    // Update state instantly
-                    renderPlayers[id].name = p.name;
-                    renderPlayers[id].avatar = p.avatar;
-                    renderPlayers[id].hat = p.hat;
-                    renderPlayers[id].shirt = p.shirt;
-                    renderPlayers[id].pants = p.pants;
-                    renderPlayers[id].shoes = p.shoes;
-                    renderPlayers[id].isMoving = p.isMoving;
-                    renderPlayers[id].score = p.score;
-                }
+                // แสดง Damage Animation
+                const dt = document.getElementById('dmgText');
+                dt.innerText = `-${data.damage} HP`;
+                dt.style.color = isMeAttacking ? '#10b981' : '#f43f5e'; // สีเขียวถ้าเราตี สีแดงถ้าโดนตี
+                dt.classList.add('show');
+                setTimeout(() => dt.classList.remove('show'), 800);
+            } else if (data.action === 'MISS') {
+                // เอฟเฟกต์ตอบผิด
+                const qb = document.getElementById('battleQuestion');
+                qb.style.borderColor = '#f43f5e';
+                setTimeout(() => qb.style.borderColor = '#38bdf8', 300);
             }
-            // Cleanup disconnected
-            for (let id in renderPlayers) {
-                if (!players[id]) delete renderPlayers[id];
-            }
+        });
 
-            // Depth sorting (draw players lower on Y axis last)
-            const arr = Object.values(renderPlayers).sort((a, b) => a.y - b.y);
-            arr.forEach(p => drawPlayer(p, players[myId] && p.name === players[myId].name));
+        socket.on('nextQuestion', q => {
+            document.getElementById('battleQuestion').innerText = q.text;
+        });
 
-            // Particles
-            particles.forEach(q => {
-                ctx.globalAlpha = Math.max(0, q.life);
-                ctx.fillStyle = q.c;
-                ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, Math.PI * 2); ctx.fill();
-            });
-            ctx.globalAlpha = 1;
+        socket.on('battleEnd', data => {
+            document.getElementById('resultModal').style.display = 'grid';
+            const rt = document.getElementById('resultTitle');
+            rt.innerText = data.result;
+            rt.style.color = data.result === 'VICTORY' ? '#fbbf24' : '#94a3b8';
+        });
 
-            // Floating Texts
-            floatingTexts.forEach(ft => {
-                ctx.globalAlpha = Math.max(0, ft.life);
-                ctx.fillStyle = ft.color;
-                ctx.font = 'bold 16px Kanit';
-                ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                ctx.shadowBlur = 4;
-                ctx.fillText(ft.text, ft.x, ft.y);
-                ctx.shadowBlur = 0; // reset
-            });
-            ctx.globalAlpha = 1;
-
-            ctx.restore();
+        function closeBattle() {
+            document.getElementById('resultModal').style.display = 'none';
+            document.getElementById('battleScreen').style.display = 'none';
+            const pvpBtn = document.querySelector('.pvp-btn');
+            pvpBtn.style.display = 'block';
+            pvpBtn.innerText = '⚔️ QUICK DUEL';
         }
-
-        // Custom Player Drawing logic based on selected fashion
-        function drawPlayer(p, isMe) {
-            // Cull if completely out of view bounds
-            if (p.x < camera.x - 100 || p.x > camera.x + W + 100 || p.y < camera.y - 100 || p.y > camera.y + H + 100) return;
-
-            ctx.save();
-            ctx.translate(Math.round(p.x), Math.round(p.y));
-            
-            // Bobbing animation if moving
-            const bob = p.isMoving ? Math.sin(Date.now() / 90) * 3 : 0;
-            ctx.translate(0, bob);
-            
-            // Highlight self
-            if (isMe) {
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
-                ctx.beginPath(); ctx.ellipse(0, 24, 20, 10, 0, 0, Math.PI * 2); ctx.fill();
-            }
-
-            // Color Palettes
-            const skinColors = { hero: '#fde68a', wizard: '#e0e7ff', robot: '#94a3b8', rogue: '#fecaca', cleric: '#fef08a' };
-            const shirtColors = { shirt1: '#4f46e5', shirt2: '#7c3aed', shirt3: '#0891b2', shirt4: '#d97706', shirt5: '#059669' };
-            const pantsColors = { pants1: '#0f172a', pants2: '#334155', pants3: '#475569', pants4: '#1e293b', pants5: '#1e3a8a' };
-            const shoesColors = { shoes1: '#020617', shoes2: '#451a03', shoes3: '#1e293b', shoes4: '#0284c7', shoes5: '#b45309' };
-
-            // Draw Pants (Legs)
-            ctx.fillStyle = pantsColors[p.pants] || '#0f172a';
-            ctx.fillRect(-12, 12, 10, 10);
-            ctx.fillRect(2, 12, 10, 10);
-
-            // Draw Shoes
-            ctx.fillStyle = shoesColors[p.shoes] || '#020617';
-            ctx.beginPath(); ctx.roundRect(-14, 20, 12, 6, 2); ctx.fill();
-            ctx.beginPath(); ctx.roundRect(2, 20, 12, 6, 2); ctx.fill();
-
-            // Draw Shirt (Body)
-            ctx.fillStyle = shirtColors[p.shirt] || '#4f46e5';
-            ctx.beginPath(); ctx.roundRect(-16, -6, 32, 20, 6); ctx.fill();
-
-            // Draw Head (Skin)
-            ctx.fillStyle = skinColors[p.avatar] || '#fde68a';
-            ctx.beginPath(); ctx.arc(0, -20, 14, 0, Math.PI * 2); ctx.fill();
-            
-            // Draw Hat
-            if (p.hat === 'wizard_hat') {
-                ctx.fillStyle = '#6d28d9';
-                ctx.beginPath(); ctx.moveTo(-20, -26); ctx.lineTo(20, -26); ctx.lineTo(0, -52); ctx.closePath(); ctx.fill();
-            } else if (p.hat === 'cap') {
-                ctx.fillStyle = '#1e293b';
-                ctx.beginPath(); ctx.arc(0, -24, 13, Math.PI, 0); ctx.fill();
-                ctx.fillRect(0, -24, 16, 4); // visor
-            } else if (p.hat === 'crown') {
-                ctx.fillStyle = '#f59e0b';
-                ctx.beginPath(); ctx.moveTo(-14, -26); ctx.lineTo(-14, -38); ctx.lineTo(-7, -30); ctx.lineTo(0, -40); ctx.lineTo(7, -30); ctx.lineTo(14, -38); ctx.lineTo(14, -26); ctx.closePath(); ctx.fill();
-            } else if (p.hat === 'hood') {
-                ctx.fillStyle = '#0f172a';
-                ctx.beginPath(); ctx.arc(0, -20, 16, Math.PI, 0, true); ctx.fill();
-            }
-            
-            // Name tag & Crown for Top Scorer
-            ctx.translate(0, -bob); // Undo bob for text
-            ctx.fillStyle = '#fff';
-            ctx.font = '600 12px Kanit';
-            ctx.textAlign = 'center';
-            ctx.fillText(p.name, 0, -56);
-            
-            if (p.score > 0) {
-                const top = [...Object.values(players)].sort((a, b) => b.score - a.score)[0];
-                if (top && top.name === p.name) {
-                    ctx.fillStyle = '#fbbf24';
-                    ctx.font = '16px sans-serif';
-                    ctx.fillText('👑', 0, -72);
-                }
-            }
-            ctx.restore();
-        }
-
-        // --- Mini-map Rendering ---
-        function drawMini() {
-            const w = 150, h = 56;
-            mctx.clearRect(0, 0, w, h);
-            mctx.fillStyle = 'rgba(7, 10, 20, 0.9)'; mctx.fillRect(0, 0, w, h);
-            mctx.strokeStyle = 'rgba(255,255,255,0.1)'; mctx.strokeRect(1, 1, w - 2, h - 2);
-            
-            // Map bounds represent 4000x4000
-            stations.forEach(s => {
-                mctx.fillStyle = me?.completed >= s.id ? '#10b981' : s.color;
-                mctx.beginPath(); mctx.arc(s.x / world.width * w, s.y / world.height * h, 3, 0, Math.PI * 2); mctx.fill();
-            });
-            Object.values(players).forEach(p => {
-                mctx.fillStyle = p.id === myId ? '#38bdf8' : '#64748b';
-                mctx.fillRect(p.x / world.width * w - 1.5, p.y / world.height * h - 1.5, 3, 3);
-            });
-        }
-
-        // --- Main Game Loop ---
-        function update() {
-            if (started && me) {
-                let dx = 0, dy = 0;
-                
-                // Joystick overrides Keyboard
-                if (joystickActive) {
-                    dx = joystickVector.x;
-                    dy = joystickVector.y;
-                } else {
-                    dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-                    dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
-                    if (dx !== 0 && dy !== 0) {
-                        const l = Math.hypot(dx, dy);
-                        dx /= l; dy /= l;
-                    }
-                }
-
-                if (dx !== 0 || dy !== 0) {
-                    const speed = 7;
-                    me.x = Math.max(80, Math.min(world.width - 80, me.x + dx * speed));
-                    me.y = Math.max(80, Math.min(world.height - 80, me.y + dy * speed));
-                    me.isMoving = true;
-                    
-                    // Optimization: Throttle network updates to max 25fps (40ms)
-                    const now = Date.now();
-                    if (now - lastSendTime > 40) {
-                        socket.emit('move', { x: me.x, y: me.y, isMoving: true });
-                        lastSendTime = now;
-                    }
-                } else {
-                    if (me.isMoving) {
-                        me.isMoving = false;
-                        socket.emit('move', { x: me.x, y: me.y, isMoving: false });
-                    }
-                }
-            }
-            
-            // Physics Update (Particles & Texts)
-            for (let i = floatingTexts.length - 1; i >= 0; i--) {
-                const ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.025;
-                if (ft.life <= 0) floatingTexts.splice(i, 1);
-            }
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const q = particles[i]; q.x += q.vx; q.y += q.vy; q.vx *= 0.93; q.vy *= 0.93; q.life -= 0.03;
-                if (q.life <= 0) particles.splice(i, 1);
-            }
-            
-            drawWorld();
-            drawMini();
-            requestAnimationFrame(update);
-        }
-
-        // Check for station proximity
-        setInterval(() => {
-            if (Date.now() < modalCooldown) return;
-            const next = stations.find(s => s.id === (me?.completed || 0) + 1);
-            if (next && me && Math.hypot(me.x - next.x, me.y - next.y) < 140 && !document.getElementById('stationModal').classList.contains('show')) {
-                socket.emit('requestStationUnlock', { stationId: next.id });
-            }
-        }, 500);
-
-        // Start Loop
-        update();
     </script>
 </body>
 </html>
